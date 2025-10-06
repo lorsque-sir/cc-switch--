@@ -409,6 +409,7 @@ function App() {
         <EditProviderModal
           appType={activeApp}
           provider={providers[editingProviderId]}
+          currentProviderId={currentProviderId}
           onSave={handleEditProvider}
           onClose={() => setEditingProviderId(null)}
         />
