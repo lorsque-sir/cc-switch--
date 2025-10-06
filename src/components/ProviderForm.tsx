@@ -50,6 +50,7 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
   title,
   submitText,
   initialData,
+  currentProviderId,
   showPresets = false,
   onSubmit,
   onClose,
