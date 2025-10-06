@@ -7,6 +7,7 @@ import ProviderForm from "./ProviderForm";
 interface EditProviderModalProps {
   appType: AppType;
   provider: Provider;
+  currentProviderId?: string;
   onSave: (provider: Provider) => void;
   onClose: () => void;
 }
