@@ -90,6 +90,16 @@ export const tauriAPI = {
     }
   },
 
+  // 停用当前供应商
+  disableCurrentProvider: async (app?: AppType): Promise<boolean> => {
+    try {
+      return await invoke("disable_current_provider", { app_type: app, app });
+    } catch (error) {
+      console.error("停用当前供应商失败:", error);
+      throw error;
+    }
+  },
+
   // 导入当前配置为默认供应商
   importCurrentConfigAsDefault: async (
     app?: AppType,
@@ -118,16 +128,6 @@ export const tauriAPI = {
       return await invoke("get_claude_code_config_path");
     } catch (error) {
       console.error("获取配置路径失败:", error);
-      return "";
-    }
-  },
-
-  // 获取当前生效的配置目录
-  getConfigDir: async (app?: AppType): Promise<string> => {
-    try {
-      return await invoke("get_config_dir", { app_type: app, app });
-    } catch (error) {
-      console.error("获取配置目录失败:", error);
       return "";
     }
   },
@@ -199,22 +199,10 @@ export const tauriAPI = {
 
   // （保留空位，取消迁移提示）
 
-  // 选择配置目录
-  selectConfigDirectory: async (
-    defaultPath?: string,
-  ): Promise<string | null> => {
-    try {
-      const sanitized =
-        defaultPath && defaultPath.trim() !== ""
-          ? defaultPath
-          : undefined;
-      return await invoke<string | null>("pick_directory", {
-        defaultPath: sanitized,
-      });
-    } catch (error) {
-      console.error("选择配置目录失败:", error);
-      return null;
-    }
+  // 选择配置文件（Tauri 暂不实现，保留接口兼容性）
+  selectConfigFile: async (): Promise<string | null> => {
+    console.warn("selectConfigFile 在 Tauri 版本中暂不支持");
+    return null;
   },
 
   // 获取设置
@@ -223,7 +211,7 @@ export const tauriAPI = {
       return await invoke("get_settings");
     } catch (error) {
       console.error("获取设置失败:", error);
-      return { showInTray: true, minimizeToTrayOnClose: true };
+      return { showInTray: true };
     }
   },
 
@@ -243,16 +231,6 @@ export const tauriAPI = {
       await invoke("check_for_updates");
     } catch (error) {
       console.error("检查更新失败:", error);
-    }
-  },
-
-  // 判断是否为便携模式
-  isPortable: async (): Promise<boolean> => {
-    try {
-      return await invoke<boolean>("is_portable_mode");
-    } catch (error) {
-      console.error("检测便携模式失败:", error);
-      return false;
     }
   },
 
@@ -307,43 +285,21 @@ export const tauriAPI = {
     }
   },
 
-  // Claude 插件：获取 ~/.claude/config.json 状态
-  getClaudePluginStatus: async (): Promise<ConfigStatus> => {
+  // 获取当前 Claude settings.json 的完整内容
+  getCurrentClaudeSettings: async (): Promise<any> => {
     try {
-      return await invoke<ConfigStatus>("get_claude_plugin_status");
+      return await invoke("get_current_claude_settings");
     } catch (error) {
-      console.error("获取 Claude 插件状态失败:", error);
-      return { exists: false, path: "", error: String(error) };
+      throw new Error(`获取 Claude 配置失败: ${String(error)}`);
     }
   },
 
-  // Claude 插件：读取配置内容
-  readClaudePluginConfig: async (): Promise<string | null> => {
+  // 同步当前供应商配置（从 live settings.json 回填）
+  syncCurrentProviderConfig: async (app?: AppType): Promise<boolean> => {
     try {
-      return await invoke<string | null>("read_claude_plugin_config");
+      return await invoke("sync_current_provider_config", { app_type: app, app });
     } catch (error) {
-      throw new Error(`读取 Claude 插件配置失败: ${String(error)}`);
-    }
-  },
-
-  // Claude 插件：应用或移除固定配置
-  applyClaudePluginConfig: async (options: {
-    official: boolean;
-  }): Promise<boolean> => {
-    const { official } = options;
-    try {
-      return await invoke<boolean>("apply_claude_plugin_config", { official });
-    } catch (error) {
-      throw new Error(`写入 Claude 插件配置失败: ${String(error)}`);
-    }
-  },
-
-  // Claude 插件：检测是否已应用目标配置
-  isClaudePluginApplied: async (): Promise<boolean> => {
-    try {
-      return await invoke<boolean>("is_claude_plugin_applied");
-    } catch (error) {
-      throw new Error(`检测 Claude 插件配置失败: ${String(error)}`);
+      throw new Error(`同步供应商配置失败: ${String(error)}`);
     }
   },
 };

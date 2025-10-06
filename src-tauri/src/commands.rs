@@ -521,6 +521,69 @@ pub async fn get_claude_code_config_path() -> Result<String, String> {
     Ok(get_claude_settings_path().to_string_lossy().to_string())
 }
 
+/// 获取当前 Claude settings.json 的完整内容
+#[tauri::command]
+pub async fn get_current_claude_settings() -> Result<serde_json::Value, String> {
+    let settings_path = get_claude_settings_path();
+    if !settings_path.exists() {
+        return Err("Claude Code 配置文件不存在".to_string());
+    }
+
+    crate::config::read_json_file::<serde_json::Value>(&settings_path)
+}
+
+/// 同步当前供应商配置（从 live settings.json 回填）
+#[tauri::command]
+pub async fn sync_current_provider_config(
+    state: State<'_, AppState>,
+    app_type: Option<AppType>,
+    app: Option<String>,
+    appType: Option<String>,
+) -> Result<bool, String> {
+    let app_type = app_type
+        .or_else(|| app.as_deref().map(|s| s.into()))
+        .or_else(|| appType.as_deref().map(|s| s.into()))
+        .unwrap_or(AppType::Claude);
+
+    match app_type {
+        AppType::Claude => {
+            let settings_path = get_claude_settings_path();
+            if !settings_path.exists() {
+                return Err("Claude Code 配置文件不存在".to_string());
+            }
+
+            // 读取 live settings.json
+            let live_config = crate::config::read_json_file::<serde_json::Value>(&settings_path)?;
+
+            // 更新当前供应商的配置
+            let mut config = state
+                .config
+                .lock()
+                .map_err(|e| format!("获取锁失败: {}", e))?;
+
+            let manager = config
+                .get_manager_mut(&app_type)
+                .ok_or_else(|| format!("应用类型不存在: {:?}", app_type))?;
+
+            if !manager.current.is_empty() {
+                if let Some(current_provider) = manager.providers.get_mut(&manager.current) {
+                    current_provider.settings_config = live_config;
+                    log::info!("已同步当前供应商 '{}' 的配置", current_provider.name);
+                }
+            }
+
+            // 保存配置
+            drop(config);
+            state.save()?;
+            Ok(true)
+        }
+        AppType::Codex => {
+            // Codex 的同步逻辑（如果需要的话）
+            Ok(true)
+        }
+    }
+}
+
 /// 获取当前生效的配置目录
 #[tauri::command]
 pub async fn get_config_dir(
