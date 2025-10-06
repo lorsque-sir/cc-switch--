@@ -1168,27 +1168,33 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
               </div>
             )}
 
-            {/* 基础 URL 输入框 - 仅在自定义模式下显示 */}
+            {/* 请求地址输入框 - 在需要时显示 */}
             {!isCodex && showBaseUrlInput && (
               <div className="space-y-2">
                 <label
                   htmlFor="baseUrl"
                   className="block text-sm font-medium text-gray-900 dark:text-gray-100"
                 >
-                  请求地址
+                  请求地址 (API Base URL)
                 </label>
                 <input
                   type="url"
                   id="baseUrl"
                   value={baseUrl}
                   onChange={(e) => handleBaseUrlChange(e.target.value)}
-                  placeholder="https://your-api-endpoint.com"
+                  placeholder={
+                    initialData
+                      ? "修改API服务端点地址"
+                      : "https://your-api-endpoint.com"
+                  }
                   autoComplete="off"
                   className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:border-blue-500 dark:focus:border-blue-400 transition-colors"
                 />
-                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    💡 填写兼容 Claude API 的服务端点地址
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                  <p className="text-xs text-blue-600 dark:text-blue-400">
+                    💡 {initialData
+                        ? "修改当前供应商的API服务地址，留空则使用默认配置"
+                        : "填写兼容 Claude API 的服务端点地址"}
                   </p>
                 </div>
               </div>
