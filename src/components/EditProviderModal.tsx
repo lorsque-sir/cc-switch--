@@ -34,6 +34,7 @@ const EditProviderModal: React.FC<EditProviderModalProps> = ({
       title={t("common.edit")}
       submitText={t("common.save")}
       initialData={provider}
+      currentProviderId={currentProviderId}
       showPresets={false}
       onSubmit={handleSubmit}
       onClose={onClose}
