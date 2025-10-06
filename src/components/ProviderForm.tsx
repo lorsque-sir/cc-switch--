@@ -39,6 +39,7 @@ interface ProviderFormProps {
   title: string;
   submitText: string;
   initialData?: Provider;
+  currentProviderId?: string;
   showPresets?: boolean;
   onSubmit: (data: Omit<Provider, "id">) => void;
   onClose: () => void;
