@@ -223,6 +223,32 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
     }
   }, []); // 只在组件挂载时执行一次
 
+  // 编辑当前供应商时，同步完整的 live 配置
+  useEffect(() => {
+    const syncCurrentProviderConfig = async () => {
+      if (initialData && !isCodex && currentProviderId === initialData.id) {
+        try {
+          // 获取当前完整的 settings.json 内容
+          const liveConfig = await window.api.getCurrentClaudeSettings();
+          const configString = JSON.stringify(liveConfig, null, 2);
+
+          // 更新表单数据
+          updateSettingsConfigValue(configString);
+
+          // 同步后端供应商配置
+          await window.api.syncCurrentProviderConfig(appType);
+
+          console.log("已同步当前供应商的完整配置");
+        } catch (error) {
+          console.warn("同步当前供应商配置失败:", error);
+          // 如果同步失败，继续使用原有配置
+        }
+      }
+    };
+
+    syncCurrentProviderConfig();
+  }, [initialData, isCodex, currentProviderId, appType]);
+
   // 初始化时检查通用配置片段
   useEffect(() => {
     if (initialData) {
