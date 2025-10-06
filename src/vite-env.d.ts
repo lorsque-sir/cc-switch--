@@ -47,6 +47,9 @@ declare global {
       getVSCodeSettingsStatus: () => Promise<ConfigStatus>;
       readVSCodeSettings: () => Promise<string>;
       writeVSCodeSettings: (content: string) => Promise<boolean>;
+      // Claude 配置同步能力
+      getCurrentClaudeSettings: () => Promise<any>;
+      syncCurrentProviderConfig: (app?: AppType) => Promise<boolean>;
       // Claude 插件配置能力
       getClaudePluginStatus: () => Promise<ConfigStatus>;
       readClaudePluginConfig: () => Promise<string | null>;
