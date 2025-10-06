@@ -710,7 +710,13 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
       if (!config.env) {
         config.env = {};
       }
-      config.env.ANTHROPIC_BASE_URL = url.trim();
+
+      // 如果URL为空，删除该字段；否则设置值
+      if (url.trim()) {
+        config.env.ANTHROPIC_BASE_URL = url.trim();
+      } else {
+        delete config.env.ANTHROPIC_BASE_URL;
+      }
 
       updateSettingsConfigValue(JSON.stringify(config, null, 2));
     } catch {
