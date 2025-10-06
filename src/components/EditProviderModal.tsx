@@ -15,6 +15,7 @@ interface EditProviderModalProps {
 const EditProviderModal: React.FC<EditProviderModalProps> = ({
   appType,
   provider,
+  currentProviderId,
   onSave,
   onClose,
 }) => {
