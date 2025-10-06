@@ -856,8 +856,15 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
   // 综合判断是否应该显示 Kimi 模型选择器
   const shouldShowKimiSelector = isKimiPreset || isEditingKimi;
 
-  // 判断是否显示基础 URL 输入框（仅自定义模式显示）
-  const showBaseUrlInput = selectedPreset === -1 && !isCodex;
+  // 判断是否显示基础 URL 输入框
+  // 1. 自定义模式总是显示
+  // 2. 编辑模式且非官方预设时显示
+  // 3. 编辑模式且配置中包含自定义API地址时显示
+  const showBaseUrlInput = !isCodex && (
+    selectedPreset === -1 || // 自定义模式
+    (!showPresets && !isOfficialPreset) || // 编辑模式且非官方
+    (initialData && formData.settingsConfig.includes('ANTHROPIC_BASE_URL')) // 编辑模式且有自定义地址
+  );
 
   // 判断是否显示"获取 API Key"链接（国产官方、聚合站和第三方显示）
   const shouldShowApiKeyLink =
