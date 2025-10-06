@@ -24,6 +24,7 @@ declare global {
       deleteProvider: (id: string, app?: AppType) => Promise<boolean>;
       updateProvider: (provider: Provider, app?: AppType) => Promise<boolean>;
       switchProvider: (providerId: string, app?: AppType) => Promise<boolean>;
+      disableCurrentProvider: (app?: AppType) => Promise<boolean>;
       importCurrentConfigAsDefault: (app?: AppType) => Promise<ImportResult>;
       getClaudeCodeConfigPath: () => Promise<string>;
       getClaudeConfigStatus: () => Promise<ConfigStatus>;
