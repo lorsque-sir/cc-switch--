@@ -406,6 +406,8 @@ pub fn run() {
             commands::get_claude_config_status,
             commands::get_config_status,
             commands::get_claude_code_config_path,
+            commands::get_current_claude_settings,
+            commands::sync_current_provider_config,
             commands::get_config_dir,
             commands::open_config_folder,
             commands::pick_directory,
