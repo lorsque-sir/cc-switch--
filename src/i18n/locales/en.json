@@ -49,6 +49,8 @@
     "providerDeleted": "Provider deleted successfully",
     "switchSuccess": "Switch successful! Please restart {{appName}} terminal to take effect",
     "switchFailed": "Switch failed, please check configuration",
+    "disableSuccess": "Provider disabled, env field cleared",
+    "disableFailed": "Disable failed, please check configuration",
     "autoImported": "Default provider created from existing configuration",
     "appliedToVSCode": "Applied to VS Code, restart Codex plugin to take effect",
     "removedFromVSCode": "Removed from VS Code, restart Codex plugin to take effect",
