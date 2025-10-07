@@ -49,6 +49,8 @@
     "providerDeleted": "供应商删除成功",
     "switchSuccess": "切换成功！请重启 {{appName}} 终端以生效",
     "switchFailed": "切换失败，请检查配置",
+    "disableSuccess": "已停用供应商，env 字段已清空",
+    "disableFailed": "停用失败，请检查配置",
     "autoImported": "已从现有配置创建默认供应商",
     "appliedToVSCode": "已应用到 VS Code，重启 Codex 插件以生效",
     "removedFromVSCode": "已从 VS Code 移除，重启 Codex 插件以生效",
