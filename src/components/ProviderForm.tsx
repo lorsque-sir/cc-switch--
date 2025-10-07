@@ -1187,25 +1187,33 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
                 >
                   请求地址 (API Base URL)
                 </label>
-                <input
-                  type="url"
-                  id="baseUrl"
-                  value={baseUrl}
-                  onChange={(e) => handleBaseUrlChange(e.target.value)}
-                  placeholder={
-                    initialData
-                      ? "修改API服务端点地址"
-                      : "https://your-api-endpoint.com"
-                  }
-                  autoComplete="off"
-                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:border-blue-500 dark:focus:border-blue-400 transition-colors"
-                />
+                <div className="flex items-start gap-2">
+                  <input
+                    type="url"
+                    id="baseUrl"
+                    value={baseUrl}
+                    onChange={(e) => handleBaseUrlChange(e.target.value)}
+                    placeholder={
+                      initialData
+                        ? "修改API服务端点地址"
+                        : "https://your-api-endpoint.com"
+                    }
+                    autoComplete="off"
+                    className="flex-1 px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:border-blue-500 dark:focus:border-blue-400 transition-colors"
+                  />
+                  <BaseUrlSelector
+                    urls={alternativeUrls}
+                    currentUrl={baseUrl}
+                    onSelect={handleBaseUrlChange}
+                    onChange={setAlternativeUrls}
+                  />
+                </div>
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
                   <p className="text-xs text-blue-600 dark:text-blue-400">
                     💡{" "}
                     {initialData
-                      ? "修改当前供应商的API服务地址，留空则使用默认配置"
-                      : "填写兼容 Claude API 的服务端点地址"}
+                      ? "修改当前供应商的API服务地址，留空则使用默认配置。使用\"快捷选择\"可保存和切换常用地址"
+                      : "填写兼容 Claude API 的服务端点地址。点击\"快捷选择\"可保存常用地址"}
                   </p>
                 </div>
               </div>
