@@ -13,6 +13,8 @@ export interface Provider {
   // 新增：供应商分类（用于差异化提示/能力开关）
   category?: ProviderCategory;
   createdAt?: number; // 添加时间戳（毫秒）
+  // 新增：备选 API 地址列表（用于快速切换）
+  alternativeUrls?: string[];
 }
 
 export interface AppConfig {
