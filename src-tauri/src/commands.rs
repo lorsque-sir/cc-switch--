@@ -479,6 +479,84 @@ pub async fn disable_current_provider(
     Ok(true)
 }
 
+/// 快速切换当前供应商的 API 地址（仅 Claude）
+#[tauri::command]
+pub async fn switch_provider_url(
+    state: State<'_, AppState>,
+    url: String,
+) -> Result<bool, String> {
+    use crate::config::{read_json_file, write_json_file};
+
+    let mut config = state
+        .config
+        .lock()
+        .map_err(|e| format!("获取锁失败: {}", e))?;
+
+    let manager = config
+        .get_manager_mut(&AppType::Claude)
+        .ok_or_else(|| "Claude 应用类型不存在".to_string())?;
+
+    // 获取当前供应商
+    if manager.current.is_empty() {
+        return Err("当前没有激活的供应商".to_string());
+    }
+
+    let provider = manager
+        .providers
+        .get(&manager.current)
+        .ok_or_else(|| "当前供应商不存在".to_string())?
+        .clone();
+
+    // 验证 URL 是否在备选列表中
+    if let Some(ref alt_urls) = provider.alternative_urls {
+        if !alt_urls.contains(&url) {
+            return Err(format!("地址 {} 不在供应商的备选列表中", url));
+        }
+    } else {
+        return Err("当前供应商未配置备选地址".to_string());
+    }
+
+    let settings_path = get_claude_settings_path();
+
+    // 读取现有配置
+    let mut final_config = if settings_path.exists() {
+        read_json_file::<serde_json::Value>(&settings_path)
+            .unwrap_or(serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+
+    // 只更新 env.ANTHROPIC_BASE_URL
+    if let Some(config_obj) = final_config.as_object_mut() {
+        let env = config_obj
+            .entry("env")
+            .or_insert(serde_json::json!({}));
+        if let Some(env_obj) = env.as_object_mut() {
+            env_obj.insert("ANTHROPIC_BASE_URL".to_string(), serde_json::Value::String(url.clone()));
+        }
+    }
+
+    // 写入配置
+    write_json_file(&settings_path, &final_config)?;
+
+    // 同时更新内存中的供应商配置
+    if let Some(cur) = manager.providers.get_mut(&manager.current) {
+        if let Some(provider_env) = cur.settings_config.get_mut("env") {
+            if let Some(env_obj) = provider_env.as_object_mut() {
+                env_obj.insert("ANTHROPIC_BASE_URL".to_string(), serde_json::Value::String(url.clone()));
+            }
+        }
+    }
+
+    log::info!("已切换当前供应商的 API 地址到: {}", url);
+
+    // 保存配置
+    drop(config);
+    state.save()?;
+
+    Ok(true)
+}
+
 /// 导入当前配置为默认供应商
 #[tauri::command]
 pub async fn import_default_config(
