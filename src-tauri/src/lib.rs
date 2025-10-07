@@ -269,6 +269,41 @@ async fn switch_provider_internal(
     Ok(())
 }
 
+/// 内部停用供应商函数
+async fn disable_provider_internal(
+    app: &tauri::AppHandle,
+    app_type: crate::app_config::AppType,
+) -> Result<(), String> {
+    if let Some(app_state) = app.try_state::<AppState>() {
+        crate::commands::disable_current_provider(
+            app_state.clone().into(),
+            Some(app_type),
+            None,
+            None,
+        )
+        .await?;
+
+        // 停用成功后重新创建托盘菜单
+        if let Ok(new_menu) = create_tray_menu(app, app_state.inner()) {
+            if let Some(tray) = app.tray_by_id("main") {
+                if let Err(e) = tray.set_menu(Some(new_menu)) {
+                    log::error!("更新托盘菜单失败: {}", e);
+                }
+            }
+        }
+
+        // 发射事件到前端，通知供应商已停用
+        let event_data = serde_json::json!({
+            "appType": app_type.as_str(),
+            "providerId": ""
+        });
+        if let Err(e) = app.emit("provider-switched", event_data) {
+            log::error!("发射供应商停用事件失败: {}", e);
+        }
+    }
+    Ok(())
+}
+
 /// 更新托盘菜单的Tauri命令
 #[tauri::command]
 async fn update_tray_menu(
