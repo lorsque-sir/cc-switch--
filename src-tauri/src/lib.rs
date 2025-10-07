@@ -431,13 +431,30 @@ pub fn run() {
             // 创建动态托盘菜单
             let menu = create_tray_menu(app.handle(), &app_state)?;
 
-            // 构建托盘
+            // 构建托盘 - 使用防抖机制避免双击时触发两次切换
             let app_handle_for_tray = app.handle().clone();
+            let last_click_time = Arc::new(Mutex::new(None::<Instant>));
+            let last_click_time_clone = last_click_time.clone();
+
             let mut tray_builder = TrayIconBuilder::with_id("main")
                 .on_tray_icon_event(move |_tray, event| match event {
-                    // 左键单击切换窗口显示/隐藏
+                    // 左键单击切换窗口显示/隐藏（带防抖）
                     TrayIconEvent::Click { button, .. } => {
                         if matches!(button, tauri::tray::MouseButton::Left) {
+                            let now = Instant::now();
+                            let mut last_time = last_click_time_clone.lock().unwrap();
+
+                            // 防抖：如果距离上次点击少于 300ms，忽略（这是双击的第二次点击）
+                            if let Some(last) = *last_time {
+                                if now.duration_since(last).as_millis() < 300 {
+                                    return;
+                                }
+                            }
+
+                            // 更新上次点击时间
+                            *last_time = Some(now);
+                            drop(last_time);
+
                             if let Some(window) = app_handle_for_tray.get_webview_window("main") {
                                 // 检查窗口是否可见
                                 if let Ok(is_visible) = window.is_visible() {
@@ -470,8 +487,6 @@ pub fn run() {
                             }
                         }
                     }
-                    // 忽略双击事件，避免与单击冲突
-                    TrayIconEvent::DoubleClick { .. } => {}
                     _ => log::debug!("unhandled event {event:?}"),
                 })
                 .menu(&menu)
