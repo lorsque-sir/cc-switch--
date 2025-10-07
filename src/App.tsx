@@ -405,6 +405,7 @@ function App() {
               providers={providers}
               currentProviderId={currentProviderId}
               onSwitch={handleSwitchProvider}
+              onDisable={handleDisableProvider}
               onDelete={handleDeleteProvider}
               onEdit={setEditingProviderId}
               appType={activeApp}
