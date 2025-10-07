@@ -9,6 +9,8 @@ mod settings;
 mod store;
 mod vscode;
 
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
 use store::AppState;
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuBuilder, MenuItem},
