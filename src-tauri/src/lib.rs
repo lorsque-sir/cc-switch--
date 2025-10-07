@@ -284,11 +284,13 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
                     match commands::switch_provider_url(app_state, url.clone()).await {
                         Ok(_) => {
                             log::info!("成功切换API地址到: {}", url);
-                            // 切换后更新托盘菜单
-                            if let Ok(new_menu) = create_tray_menu(&app_handle, app_state.inner()) {
-                                if let Some(tray) = app_handle.tray_by_id("main") {
-                                    if let Err(e) = tray.set_menu(Some(new_menu)) {
-                                        log::error!("更新托盘菜单失败: {}", e);
+                            // 切换后更新托盘菜单（重新获取 app_state）
+                            if let Some(app_state) = app_handle.try_state::<AppState>() {
+                                if let Ok(new_menu) = create_tray_menu(&app_handle, app_state.inner()) {
+                                    if let Some(tray) = app_handle.tray_by_id("main") {
+                                        if let Err(e) = tray.set_menu(Some(new_menu)) {
+                                            log::error!("更新托盘菜单失败: {}", e);
+                                        }
                                     }
                                 }
                             }
