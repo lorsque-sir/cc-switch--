@@ -22,6 +22,7 @@ import ApiKeyInput from "./ProviderForm/ApiKeyInput";
 import ClaudeConfigEditor from "./ProviderForm/ClaudeConfigEditor";
 import CodexConfigEditor from "./ProviderForm/CodexConfigEditor";
 import KimiModelSelector from "./ProviderForm/KimiModelSelector";
+import BaseUrlSelector from "./ProviderForm/BaseUrlSelector";
 import { X, AlertCircle, Save } from "lucide-react";
 import { isLinux } from "../lib/platform";
 // 分类仅用于控制少量交互（如官方禁用 API Key），不显示介绍组件
