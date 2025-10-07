@@ -74,6 +74,9 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
   const [claudeModel, setClaudeModel] = useState("");
   const [claudeSmallFastModel, setClaudeSmallFastModel] = useState("");
   const [baseUrl, setBaseUrl] = useState(""); // 新增：基础 URL 状态
+  const [alternativeUrls, setAlternativeUrls] = useState<string[]>(
+    initialData?.alternativeUrls || [],
+  );
 
   // Codex 特有的状态
   const [codexAuth, setCodexAuthState] = useState("");
