@@ -57,6 +57,19 @@ fn create_tray_menu(
                 .map_err(|e| format!("创建菜单项失败: {}", e))?;
                 menu_builder = menu_builder.item(&item);
             }
+
+            // 如果有当前供应商，添加停用按钮
+            if !claude_manager.current.is_empty() {
+                let disable_item = MenuItem::with_id(
+                    app,
+                    "claude_disable",
+                    "  停用当前供应商",
+                    true,
+                    None::<&str>,
+                )
+                .map_err(|e| format!("创建停用菜单失败: {}", e))?;
+                menu_builder = menu_builder.item(&disable_item);
+            }
         } else {
             // 没有供应商时显示提示
             let empty_hint = MenuItem::with_id(
