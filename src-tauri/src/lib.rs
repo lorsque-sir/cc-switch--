@@ -242,7 +242,7 @@ async fn switch_provider_internal(
         let provider_id_clone = provider_id.clone();
 
         crate::commands::switch_provider(
-            app_state.clone().into(),
+            app_state.clone(),
             Some(app_type),
             None,
             None,
