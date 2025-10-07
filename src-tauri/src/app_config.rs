@@ -5,7 +5,7 @@ use crate::config::{copy_file, get_app_config_dir, get_app_config_path, write_js
 use crate::provider::ProviderManager;
 
 /// 应用类型
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AppType {
     Claude,
