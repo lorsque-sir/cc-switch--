@@ -433,9 +433,28 @@ pub fn run() {
             let menu = create_tray_menu(app.handle(), &app_state)?;
 
             // 构建托盘
+            let app_handle_for_tray = app.handle().clone();
             let mut tray_builder = TrayIconBuilder::with_id("main")
-                .on_tray_icon_event(|_tray, event| match event {
-                    // 右键显示菜单（默认行为），左键双击显示主窗口
+                .on_tray_icon_event(move |_tray, event| match event {
+                    // 左键双击显示主窗口
+                    TrayIconEvent::DoubleClick { button, .. } => {
+                        if matches!(button, tray_icon::MouseButton::Left) {
+                            if let Some(window) = app_handle_for_tray.get_webview_window("main") {
+                                #[cfg(target_os = "windows")]
+                                {
+                                    let _ = window.set_skip_taskbar(false);
+                                }
+                                let _ = window.unminimize();
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                                #[cfg(target_os = "macos")]
+                                {
+                                    apply_tray_policy(&app_handle_for_tray, true);
+                                }
+                            }
+                        }
+                    }
+                    // 右键显示菜单（默认行为）
                     TrayIconEvent::Click { .. } => {}
                     _ => log::debug!("unhandled event {event:?}"),
                 })
