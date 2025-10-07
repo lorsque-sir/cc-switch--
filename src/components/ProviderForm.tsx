@@ -282,7 +282,16 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
             setClaudeSmallFastModel(
               config.env.ANTHROPIC_SMALL_FAST_MODEL || "",
             );
-            setBaseUrl(config.env.ANTHROPIC_BASE_URL || ""); // 初始化基础 URL
+            const currentBaseUrl = config.env.ANTHROPIC_BASE_URL || "";
+            setBaseUrl(currentBaseUrl); // 初始化基础 URL
+
+            // 确保当前 baseUrl 在 alternativeUrls 中
+            const altUrls = initialData.alternativeUrls || [];
+            if (currentBaseUrl && !altUrls.includes(currentBaseUrl)) {
+              setAlternativeUrls([currentBaseUrl, ...altUrls]);
+            } else if (altUrls.length > 0) {
+              setAlternativeUrls(altUrls);
+            }
 
             // 初始化 Kimi 模型选择
             setKimiAnthropicModel(config.env.ANTHROPIC_MODEL || "");
