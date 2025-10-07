@@ -297,6 +297,23 @@ function App() {
     }
   };
 
+  // 停用当前供应商（清空 env 字段）
+  const handleDisableProvider = async () => {
+    try {
+      const success = await window.api.disableCurrentProvider(activeApp);
+      if (success) {
+        setCurrentProviderId("");
+        showNotification(t("notifications.disableSuccess"), "success", 2000);
+        // 更新托盘菜单
+        await window.api.updateTrayMenu();
+      } else {
+        showNotification(t("notifications.disableFailed"), "error");
+      }
+    } catch (error) {
+      showNotification(t("notifications.disableFailed"), "error");
+    }
+  };
+
   // 自动从 live 导入一条默认供应商（仅首次初始化时）
   const handleAutoImportDefault = async () => {
     try {
