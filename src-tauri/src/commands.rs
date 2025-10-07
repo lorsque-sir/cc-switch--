@@ -467,7 +467,11 @@ pub async fn import_default_config(
             if !settings_path.exists() {
                 return Err("Claude Code 配置文件不存在".to_string());
             }
-            crate::config::read_json_file::<serde_json::Value>(&settings_path)?
+            let full_config = crate::config::read_json_file::<serde_json::Value>(&settings_path)?;
+
+            // 只提取 env 字段
+            let env = full_config.get("env").cloned().unwrap_or(serde_json::json!({}));
+            serde_json::json!({ "env": env })
         }
     };
 
