@@ -281,7 +281,7 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
             let url = url.to_string();
             tauri::async_runtime::spawn(async move {
                 if let Some(app_state) = app_handle.try_state::<AppState>() {
-                    match commands::switch_provider_url(app_state.inner().clone().into(), url.clone()).await {
+                    match commands::switch_provider_url(app_state, url.clone()).await {
                         Ok(_) => {
                             log::info!("成功切换API地址到: {}", url);
                             // 切换后更新托盘菜单
