@@ -39,6 +39,7 @@ impl Provider {
             website_url,
             category: None,
             created_at: None,
+            alternative_urls: None,
         }
     }
 }
