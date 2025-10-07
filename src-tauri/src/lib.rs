@@ -60,8 +60,54 @@ fn create_tray_menu(
                 menu_builder = menu_builder.item(&item);
             }
 
-            // 如果有当前供应商，添加停用按钮
+            // 如果有当前供应商，添加快速切换地址和停用按钮
             if !claude_manager.current.is_empty() {
+                // 获取当前供应商
+                if let Some(current_provider) = claude_manager.providers.get(&claude_manager.current) {
+                    // 如果有多个备选地址，添加快速切换子菜单
+                    if let Some(ref alt_urls) = current_provider.alternative_urls {
+                        if alt_urls.len() > 1 {
+                            // 获取当前使用的URL
+                            let current_url = current_provider
+                                .settings_config
+                                .get("env")
+                                .and_then(|env| env.get("ANTHROPIC_BASE_URL"))
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("");
+
+                            // 添加子菜单分隔符
+                            menu_builder = menu_builder.separator();
+
+                            // 添加快速切换地址标题
+                            let url_header = MenuItem::with_id(
+                                app,
+                                "url_header",
+                                "快速切换地址",
+                                false,
+                                None::<&str>,
+                            )
+                            .map_err(|e| format!("创建地址切换标题失败: {}", e))?;
+                            menu_builder = menu_builder.item(&url_header);
+
+                            // 为每个地址创建菜单项
+                            for url in alt_urls {
+                                let is_current = url == current_url;
+                                let item = CheckMenuItem::with_id(
+                                    app,
+                                    format!("switch_url_{}", url.replace('/', "_").replace(':', "_")),
+                                    format!("  {}", url),
+                                    true,
+                                    is_current,
+                                    None::<&str>,
+                                )
+                                .map_err(|e| format!("创建地址菜单项失败: {}", e))?;
+                                menu_builder = menu_builder.item(&item);
+                            }
+                        }
+                    }
+                }
+
+                menu_builder = menu_builder.separator();
                 let disable_item = MenuItem::with_id(
                     app,
                     "claude_disable",
