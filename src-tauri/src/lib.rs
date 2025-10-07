@@ -171,6 +171,17 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
             log::info!("退出应用");
             app.exit(0);
         }
+        "claude_disable" => {
+            log::info!("停用Claude供应商");
+
+            // 执行停用
+            let app_handle = app.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = disable_provider_internal(&app_handle, crate::app_config::AppType::Claude).await {
+                    log::error!("停用Claude供应商失败: {}", e);
+                }
+            });
+        }
         id if id.starts_with("claude_") => {
             let provider_id = id.strip_prefix("claude_").unwrap();
             log::info!("切换到Claude供应商: {}", provider_id);
