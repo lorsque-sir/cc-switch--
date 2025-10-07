@@ -42,19 +42,12 @@ impl Provider {
 
 /// 供应商管理器
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct ProviderManager {
     pub providers: HashMap<String, Provider>,
     pub current: String,
 }
 
-impl Default for ProviderManager {
-    fn default() -> Self {
-        Self {
-            providers: HashMap::new(),
-            current: String::new(),
-        }
-    }
-}
 
 impl ProviderManager {
     /// 获取所有供应商

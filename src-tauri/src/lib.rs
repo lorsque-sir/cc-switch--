@@ -339,26 +339,23 @@ pub fn run() {
 
     let builder = builder
         // 拦截窗口关闭：根据设置决定是否最小化到托盘
-        .on_window_event(|window, event| match event {
-            tauri::WindowEvent::CloseRequested { api, .. } => {
-                let settings = crate::settings::get_settings();
+        .on_window_event(|window, event| if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+            let settings = crate::settings::get_settings();
 
-                if settings.minimize_to_tray_on_close {
-                    api.prevent_close();
-                    let _ = window.hide();
-                    #[cfg(target_os = "windows")]
-                    {
-                        let _ = window.set_skip_taskbar(true);
-                    }
-                    #[cfg(target_os = "macos")]
-                    {
-                        apply_tray_policy(&window.app_handle(), false);
-                    }
-                } else {
-                    window.app_handle().exit(0);
+            if settings.minimize_to_tray_on_close {
+                api.prevent_close();
+                let _ = window.hide();
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = window.set_skip_taskbar(true);
                 }
+                #[cfg(target_os = "macos")]
+                {
+                    apply_tray_policy(&window.app_handle(), false);
+                }
+            } else {
+                window.app_handle().exit(0);
             }
-            _ => {}
         })
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
@@ -420,7 +417,7 @@ pub fn run() {
             // 首次启动迁移：扫描副本文件，合并到 config.json，并归档副本；旧 config.json 先归档
             {
                 let mut config_guard = app_state.config.lock().unwrap();
-                let migrated = migration::migrate_copies_into_config(&mut *config_guard)?;
+                let migrated = migration::migrate_copies_into_config(&mut config_guard)?;
                 if migrated {
                     log::info!("已将副本文件导入到 config.json，并完成归档");
                 }
@@ -433,12 +430,12 @@ pub fn run() {
             let _ = app_state.save();
 
             // 创建动态托盘菜单
-            let menu = create_tray_menu(&app.handle(), &app_state)?;
+            let menu = create_tray_menu(app.handle(), &app_state)?;
 
             // 构建托盘
             let mut tray_builder = TrayIconBuilder::with_id("main")
                 .on_tray_icon_event(|_tray, event| match event {
-                    // 左键点击已通过 show_menu_on_left_click(true) 打开菜单，这里不再额外处理
+                    // 右键显示菜单（默认行为），左键双击显示主窗口
                     TrayIconEvent::Click { .. } => {}
                     _ => log::debug!("unhandled event {event:?}"),
                 })
@@ -446,7 +443,7 @@ pub fn run() {
                 .on_menu_event(|app, event| {
                     handle_tray_menu_event(app, &event.id.0);
                 })
-                .show_menu_on_left_click(true);
+                .show_menu_on_left_click(false);
 
             // 统一使用应用默认图标；待托盘模板图标就绪后再启用
             tray_builder = tray_builder.icon(app.default_window_icon().unwrap().clone());
