@@ -432,6 +432,18 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
       }
     }
 
+    // 确保当前 baseUrl 包含在 alternativeUrls 中（Claude 专用）
+    let finalAlternativeUrls = [...alternativeUrls];
+    if (
+      !isCodex &&
+      baseUrl &&
+      baseUrl.trim() &&
+      (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) &&
+      !finalAlternativeUrls.includes(baseUrl)
+    ) {
+      finalAlternativeUrls = [baseUrl, ...finalAlternativeUrls];
+    }
+
     onSubmit({
       name: formData.name,
       websiteUrl: formData.websiteUrl,
@@ -439,7 +451,9 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
       // 仅在用户选择了预设或手动选择"自定义"时持久化分类
       ...(category ? { category } : {}),
       // 保存备选地址列表（仅 Claude 且有地址时添加）
-      ...(!isCodex && alternativeUrls.length > 0 ? { alternativeUrls } : {}),
+      ...(!isCodex && finalAlternativeUrls.length > 0
+        ? { alternativeUrls: finalAlternativeUrls }
+        : {}),
     });
   };
 
