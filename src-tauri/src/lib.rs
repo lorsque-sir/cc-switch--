@@ -278,7 +278,7 @@ async fn disable_provider_internal(
 ) -> Result<(), String> {
     if let Some(app_state) = app.try_state::<AppState>() {
         crate::commands::disable_current_provider(
-            app_state.clone().into(),
+            app_state.clone(),
             Some(app_type),
             None,
             None,
