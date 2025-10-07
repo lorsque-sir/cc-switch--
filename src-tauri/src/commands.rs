@@ -419,6 +419,66 @@ pub async fn switch_provider(
     Ok(true)
 }
 
+/// 停用当前供应商（清空 env 字段）
+#[tauri::command]
+pub async fn disable_current_provider(
+    state: State<'_, AppState>,
+    app_type: Option<AppType>,
+    app: Option<String>,
+    appType: Option<String>,
+) -> Result<bool, String> {
+    let app_type = app_type
+        .or_else(|| app.as_deref().map(|s| s.into()))
+        .or_else(|| appType.as_deref().map(|s| s.into()))
+        .unwrap_or(AppType::Claude);
+
+    // 仅支持 Claude（Codex 需要 auth.json 必须有内容）
+    if app_type != AppType::Claude {
+        return Err("停用功能仅支持 Claude Code".to_string());
+    }
+
+    let mut config = state
+        .config
+        .lock()
+        .map_err(|e| format!("获取锁失败: {}", e))?;
+
+    let manager = config
+        .get_manager_mut(&app_type)
+        .ok_or_else(|| format!("应用类型不存在: {:?}", app_type))?;
+
+    use crate::config::{read_json_file, write_json_file};
+    let settings_path = get_claude_settings_path();
+
+    // 读取现有配置
+    let mut final_config = if settings_path.exists() {
+        read_json_file::<serde_json::Value>(&settings_path).unwrap_or(serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+
+    // 清空 env 字段（设置为空对象）
+    if let Some(config_obj) = final_config.as_object_mut() {
+        config_obj.insert("env".to_string(), serde_json::json!({}));
+    }
+
+    // 写入配置
+    if let Some(parent) = settings_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {}", e))?;
+    }
+    write_json_file(&settings_path, &final_config)?;
+
+    // 清空当前供应商
+    manager.current = String::new();
+
+    log::info!("已停用 Claude 供应商，env 字段已清空");
+
+    // 保存配置
+    drop(config); // 释放锁
+    state.save()?;
+
+    Ok(true)
+}
+
 /// 导入当前配置为默认供应商
 #[tauri::command]
 pub async fn import_default_config(
@@ -470,7 +530,10 @@ pub async fn import_default_config(
             let full_config = crate::config::read_json_file::<serde_json::Value>(&settings_path)?;
 
             // 只提取 env 字段
-            let env = full_config.get("env").cloned().unwrap_or(serde_json::json!({}));
+            let env = full_config
+                .get("env")
+                .cloned()
+                .unwrap_or(serde_json::json!({}));
             serde_json::json!({ "env": env })
         }
     };
@@ -591,7 +654,10 @@ pub async fn sync_current_provider_config(
             if !manager.current.is_empty() {
                 if let Some(current_provider) = manager.providers.get_mut(&manager.current) {
                     // 只提取并同步 env 字段
-                    let env = live_config.get("env").cloned().unwrap_or(serde_json::json!({}));
+                    let env = live_config
+                        .get("env")
+                        .cloned()
+                        .unwrap_or(serde_json::json!({}));
                     current_provider.settings_config = serde_json::json!({ "env": env });
                     log::info!("已同步当前供应商 '{}' 的 env 配置", current_provider.name);
                 }

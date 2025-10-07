@@ -23,7 +23,7 @@ interface ProviderListProps {
   onNotify?: (
     message: string,
     type: "success" | "error",
-    duration?: number
+    duration?: number,
   ) => void;
 }
 
@@ -275,7 +275,7 @@ const ProviderList: React.FC<ProviderListProps> = ({
               <div
                 key={provider.id}
                 className={cn(
-                  isCurrent ? cardStyles.selected : cardStyles.interactive
+                  isCurrent ? cardStyles.selected : cardStyles.interactive,
                 )}
               >
                 <div className="flex items-start justify-between">
@@ -288,7 +288,7 @@ const ProviderList: React.FC<ProviderListProps> = ({
                       <div
                         className={cn(
                           badgeStyles.success,
-                          !isCurrent && "invisible"
+                          !isCurrent && "invisible",
                         )}
                       >
                         <CheckCircle2 size={12} />
@@ -334,7 +334,7 @@ const ProviderList: React.FC<ProviderListProps> = ({
                               "inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors w-full whitespace-nowrap justify-center",
                               vscodeAppliedFor === provider.id
                                 ? "border border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-gray-400 dark:hover:border-red-800 dark:hover:text-red-400 dark:hover:bg-red-900/20"
-                                : "border border-gray-300 text-gray-700 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 dark:border-gray-600 dark:text-gray-300 dark:hover:border-blue-700 dark:hover:text-blue-400 dark:hover:bg-blue-900/20"
+                                : "border border-gray-300 text-gray-700 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 dark:border-gray-600 dark:text-gray-300 dark:hover:border-blue-700 dark:hover:text-blue-400 dark:hover:bg-blue-900/20",
                             )}
                             title={
                               vscodeAppliedFor === provider.id
@@ -363,7 +363,7 @@ const ProviderList: React.FC<ProviderListProps> = ({
                               "inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors w-full whitespace-nowrap justify-center",
                               claudeApplied
                                 ? "border border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-600 hover:bg-red-50 dark:border-gray-600 dark:text-gray-400 dark:hover:border-red-800 dark:hover:text-red-400 dark:hover:bg-red-900/20"
-                                : "border border-gray-300 text-gray-700 hover:border-green-300 hover:text-green-600 hover:bg-green-50 dark:border-gray-600 dark:text-gray-300 dark:hover:border-green-700 dark:hover:text-green-400 dark:hover:bg-green-900/20"
+                                : "border border-gray-300 text-gray-700 hover:border-green-300 hover:text-green-600 hover:bg-green-50 dark:border-gray-600 dark:text-gray-300 dark:hover:border-green-700 dark:hover:text-green-400 dark:hover:bg-green-900/20",
                             )}
                             title={
                               claudeApplied
@@ -385,7 +385,7 @@ const ProviderList: React.FC<ProviderListProps> = ({
                         "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors w-[90px] justify-center whitespace-nowrap",
                         isCurrent
                           ? "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500 cursor-not-allowed"
-                          : "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
+                          : "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700",
                       )}
                     >
                       {isCurrent ? <Check size={14} /> : <Play size={14} />}
@@ -407,7 +407,7 @@ const ProviderList: React.FC<ProviderListProps> = ({
                         buttonStyles.icon,
                         isCurrent
                           ? "text-gray-400 cursor-not-allowed"
-                          : "text-gray-500 hover:text-red-500 hover:bg-red-100 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-500/10"
+                          : "text-gray-500 hover:text-red-500 hover:bg-red-100 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-500/10",
                       )}
                       title={t("provider.deleteProvider")}
                     >

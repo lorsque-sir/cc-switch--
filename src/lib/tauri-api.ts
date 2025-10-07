@@ -214,7 +214,7 @@ export const tauriAPI = {
       return {
         showInTray: true,
         minimizeToTrayOnClose: false,
-        language: 'zh'
+        language: "zh",
       };
     }
   },
@@ -301,7 +301,10 @@ export const tauriAPI = {
   // 同步当前供应商配置（从 live settings.json 回填）
   syncCurrentProviderConfig: async (app?: AppType): Promise<boolean> => {
     try {
-      return await invoke("sync_current_provider_config", { app_type: app, app });
+      return await invoke("sync_current_provider_config", {
+        app_type: app,
+        app,
+      });
     } catch (error) {
       throw new Error(`同步供应商配置失败: ${String(error)}`);
     }
