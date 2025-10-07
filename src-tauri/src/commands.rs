@@ -369,22 +369,41 @@ pub async fn switch_provider(
 
             let settings_path = get_claude_settings_path();
 
-            // 回填：读取 live settings.json 写回当前供应商 settings_config
+            // 回填：只回填 env 字段到当前供应商
             if settings_path.exists() && !manager.current.is_empty() {
                 if let Ok(live) = read_json_file::<serde_json::Value>(&settings_path) {
                     if let Some(cur) = manager.providers.get_mut(&manager.current) {
-                        cur.settings_config = live;
+                        // 只提取并保存 env 字段
+                        if let Some(env) = live.get("env") {
+                            cur.settings_config = serde_json::json!({
+                                "env": env.clone()
+                            });
+                        }
                     }
                 }
             }
 
-            // 切换：从目标供应商 settings_config 写入主配置
+            // 切换：读取现有配置，只更新 env 字段，保留其他用户自定义配置
             if let Some(parent) = settings_path.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {}", e))?;
             }
 
-            // 不做归档，直接写入
-            write_json_file(&settings_path, &provider.settings_config)?;
+            // 读取现有配置（如果存在）
+            let mut final_config = if settings_path.exists() {
+                read_json_file::<serde_json::Value>(&settings_path).unwrap_or(serde_json::json!({}))
+            } else {
+                serde_json::json!({})
+            };
+
+            // 从目标供应商提取 env 字段并合并
+            if let Some(provider_env) = provider.settings_config.get("env") {
+                if let Some(config_obj) = final_config.as_object_mut() {
+                    config_obj.insert("env".to_string(), provider_env.clone());
+                }
+            }
+
+            // 写入合并后的配置
+            write_json_file(&settings_path, &final_config)?;
         }
     }
 
