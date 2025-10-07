@@ -1231,7 +1231,7 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
                   <BaseUrlSelector
                     urls={alternativeUrls}
                     currentUrl={baseUrl}
-                    onSelect={handleBaseUrlChange}
+                    onSelect={handleBaseUrlSelect}
                     onChange={setAlternativeUrls}
                   />
                 </div>
