@@ -32,6 +32,7 @@
     "noProvidersDescription": "Click the \"Add Provider\" button in the top right to configure your first API provider",
     "currentlyUsing": "Currently Using",
     "enable": "Enable",
+    "disable": "Disable",
     "inUse": "In Use",
     "editProvider": "Edit Provider",
     "deleteProvider": "Delete Provider",
