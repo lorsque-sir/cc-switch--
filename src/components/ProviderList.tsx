@@ -32,6 +32,7 @@ const ProviderList: React.FC<ProviderListProps> = ({
   providers,
   currentProviderId,
   onSwitch,
+  onDisable,
   onDelete,
   onEdit,
   appType,
