@@ -402,6 +402,7 @@ pub fn run() {
             commands::update_provider,
             commands::delete_provider,
             commands::switch_provider,
+            commands::disable_current_provider,
             commands::import_default_config,
             commands::get_claude_config_status,
             commands::get_config_status,
