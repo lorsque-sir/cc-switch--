@@ -468,6 +468,8 @@ pub fn run() {
                             }
                         }
                     }
+                    // 忽略双击事件，避免与单击冲突
+                    TrayIconEvent::DoubleClick { .. } => {}
                     _ => log::debug!("unhandled event {event:?}"),
                 })
                 .menu(&menu)
