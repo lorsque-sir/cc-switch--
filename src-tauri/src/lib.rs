@@ -277,13 +277,8 @@ async fn disable_provider_internal(
     app_type: crate::app_config::AppType,
 ) -> Result<(), String> {
     if let Some(app_state) = app.try_state::<AppState>() {
-        crate::commands::disable_current_provider(
-            app_state.clone(),
-            Some(app_type),
-            None,
-            None,
-        )
-        .await?;
+        crate::commands::disable_current_provider(app_state.clone(), Some(app_type), None, None)
+            .await?;
 
         // 停用成功后重新创建托盘菜单
         if let Ok(new_menu) = create_tray_menu(app, app_state.inner()) {
@@ -339,22 +334,24 @@ pub fn run() {
 
     let builder = builder
         // 拦截窗口关闭：根据设置决定是否最小化到托盘
-        .on_window_event(|window, event| if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-            let settings = crate::settings::get_settings();
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let settings = crate::settings::get_settings();
 
-            if settings.minimize_to_tray_on_close {
-                api.prevent_close();
-                let _ = window.hide();
-                #[cfg(target_os = "windows")]
-                {
-                    let _ = window.set_skip_taskbar(true);
+                if settings.minimize_to_tray_on_close {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    #[cfg(target_os = "windows")]
+                    {
+                        let _ = window.set_skip_taskbar(true);
+                    }
+                    #[cfg(target_os = "macos")]
+                    {
+                        apply_tray_policy(&window.app_handle(), false);
+                    }
+                } else {
+                    window.app_handle().exit(0);
                 }
-                #[cfg(target_os = "macos")]
-                {
-                    apply_tray_policy(&window.app_handle(), false);
-                }
-            } else {
-                window.app_handle().exit(0);
             }
         })
         .plugin(tauri_plugin_process::init())
@@ -438,7 +435,7 @@ pub fn run() {
                 .on_tray_icon_event(move |_tray, event| match event {
                     // 左键双击显示主窗口
                     TrayIconEvent::DoubleClick { button, .. } => {
-                        if matches!(button, tray_icon::MouseButton::Left) {
+                        if matches!(button, tauri::tray::MouseButton::Left) {
                             if let Some(window) = app_handle_for_tray.get_webview_window("main") {
                                 #[cfg(target_os = "windows")]
                                 {

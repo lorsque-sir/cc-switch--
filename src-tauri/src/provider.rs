@@ -41,13 +41,11 @@ impl Provider {
 }
 
 /// 供应商管理器
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ProviderManager {
     pub providers: HashMap<String, Provider>,
     pub current: String,
 }
-
 
 impl ProviderManager {
     /// 获取所有供应商
