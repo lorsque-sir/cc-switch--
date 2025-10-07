@@ -380,19 +380,29 @@ const ProviderList: React.FC<ProviderListProps> = ({
                         )}
                       </div>
                     ) : null}
-                    <button
-                      onClick={() => onSwitch(provider.id)}
-                      disabled={isCurrent}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors w-[90px] justify-center whitespace-nowrap",
-                        isCurrent
-                          ? "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500 cursor-not-allowed"
-                          : "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700",
-                      )}
-                    >
-                      {isCurrent ? <Check size={14} /> : <Play size={14} />}
-                      {isCurrent ? t("provider.inUse") : t("provider.enable")}
-                    </button>
+                    {appType === "claude" && isCurrent ? (
+                      <button
+                        onClick={onDisable}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors w-[90px] justify-center whitespace-nowrap bg-orange-500 text-white hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700"
+                      >
+                        <Check size={14} />
+                        {t("provider.disable")}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onSwitch(provider.id)}
+                        disabled={isCurrent}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors w-[90px] justify-center whitespace-nowrap",
+                          isCurrent
+                            ? "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500 cursor-not-allowed"
+                            : "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700",
+                        )}
+                      >
+                        {isCurrent ? <Check size={14} /> : <Play size={14} />}
+                        {isCurrent ? t("provider.inUse") : t("provider.enable")}
+                      </button>
+                    )}
 
                     <button
                       onClick={() => onEdit(provider.id)}
