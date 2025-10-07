@@ -427,8 +427,12 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
       name: formData.name,
       websiteUrl: formData.websiteUrl,
       settingsConfig,
-      // 仅在用户选择了预设或手动选择“自定义”时持久化分类
+      // 仅在用户选择了预设或手动选择"自定义"时持久化分类
       ...(category ? { category } : {}),
+      // 保存备选地址列表（仅 Claude 且有地址时添加）
+      ...(!isCodex && alternativeUrls.length > 0
+        ? { alternativeUrls }
+        : {}),
     });
   };
 
