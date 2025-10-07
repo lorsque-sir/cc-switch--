@@ -481,10 +481,7 @@ pub async fn disable_current_provider(
 
 /// 快速切换当前供应商的 API 地址（仅 Claude）
 #[tauri::command]
-pub async fn switch_provider_url(
-    state: State<'_, AppState>,
-    url: String,
-) -> Result<bool, String> {
+pub async fn switch_provider_url(state: State<'_, AppState>, url: String) -> Result<bool, String> {
     use crate::config::{read_json_file, write_json_file};
 
     let mut config = state
@@ -520,19 +517,19 @@ pub async fn switch_provider_url(
 
     // 读取现有配置
     let mut final_config = if settings_path.exists() {
-        read_json_file::<serde_json::Value>(&settings_path)
-            .unwrap_or(serde_json::json!({}))
+        read_json_file::<serde_json::Value>(&settings_path).unwrap_or(serde_json::json!({}))
     } else {
         serde_json::json!({})
     };
 
     // 只更新 env.ANTHROPIC_BASE_URL
     if let Some(config_obj) = final_config.as_object_mut() {
-        let env = config_obj
-            .entry("env")
-            .or_insert(serde_json::json!({}));
+        let env = config_obj.entry("env").or_insert(serde_json::json!({}));
         if let Some(env_obj) = env.as_object_mut() {
-            env_obj.insert("ANTHROPIC_BASE_URL".to_string(), serde_json::Value::String(url.clone()));
+            env_obj.insert(
+                "ANTHROPIC_BASE_URL".to_string(),
+                serde_json::Value::String(url.clone()),
+            );
         }
     }
 
@@ -543,7 +540,10 @@ pub async fn switch_provider_url(
     if let Some(cur) = manager.providers.get_mut(&manager.current) {
         if let Some(provider_env) = cur.settings_config.get_mut("env") {
             if let Some(env_obj) = provider_env.as_object_mut() {
-                env_obj.insert("ANTHROPIC_BASE_URL".to_string(), serde_json::Value::String(url.clone()));
+                env_obj.insert(
+                    "ANTHROPIC_BASE_URL".to_string(),
+                    serde_json::Value::String(url.clone()),
+                );
             }
         }
     }

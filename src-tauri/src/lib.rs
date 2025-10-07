@@ -63,7 +63,9 @@ fn create_tray_menu(
             // 如果有当前供应商，添加快速切换地址和停用按钮
             if !claude_manager.current.is_empty() {
                 // 获取当前供应商
-                if let Some(current_provider) = claude_manager.providers.get(&claude_manager.current) {
+                if let Some(current_provider) =
+                    claude_manager.providers.get(&claude_manager.current)
+                {
                     // 如果有多个备选地址，添加快速切换子菜单
                     if let Some(ref alt_urls) = current_provider.alternative_urls {
                         if alt_urls.len() > 1 {
@@ -94,7 +96,10 @@ fn create_tray_menu(
                                 let is_current = url == current_url;
                                 let item = CheckMenuItem::with_id(
                                     app,
-                                    format!("switch_url_{}", url.replace('/', "_").replace(':', "_")),
+                                    format!(
+                                        "switch_url_{}",
+                                        url.replace(['/', ':'], "_")
+                                    ),
                                     format!("  {}", url),
                                     true,
                                     is_current,
@@ -286,7 +291,9 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
                             log::info!("成功切换API地址到: {}", url);
                             // 切换后更新托盘菜单（重新获取 app_state）
                             if let Some(app_state) = app_handle.try_state::<AppState>() {
-                                if let Ok(new_menu) = create_tray_menu(&app_handle, app_state.inner()) {
+                                if let Ok(new_menu) =
+                                    create_tray_menu(&app_handle, app_state.inner())
+                                {
                                     if let Some(tray) = app_handle.tray_by_id("main") {
                                         if let Err(e) = tray.set_menu(Some(new_menu)) {
                                             log::error!("更新托盘菜单失败: {}", e);
