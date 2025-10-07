@@ -739,6 +739,22 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
     }
   };
 
+  // 处理从下拉菜单选择地址（先保存当前地址再切换）
+  const handleBaseUrlSelect = (url: string) => {
+    // 在切换到新地址前，先将当前地址保存到备选列表（如果有效且不重复）
+    if (
+      baseUrl &&
+      baseUrl.trim() &&
+      (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) &&
+      !alternativeUrls.includes(baseUrl)
+    ) {
+      setAlternativeUrls([...alternativeUrls, baseUrl]);
+    }
+
+    // 切换到新地址
+    handleBaseUrlChange(url);
+  };
+
   // Codex: 处理 API Key 输入并写回 auth.json
   const handleCodexApiKeyChange = (key: string) => {
     setCodexApiKey(key);
