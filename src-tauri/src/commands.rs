@@ -590,8 +590,10 @@ pub async fn sync_current_provider_config(
 
             if !manager.current.is_empty() {
                 if let Some(current_provider) = manager.providers.get_mut(&manager.current) {
-                    current_provider.settings_config = live_config;
-                    log::info!("已同步当前供应商 '{}' 的配置", current_provider.name);
+                    // 只提取并同步 env 字段
+                    let env = live_config.get("env").cloned().unwrap_or(serde_json::json!({}));
+                    current_provider.settings_config = serde_json::json!({ "env": env });
+                    log::info!("已同步当前供应商 '{}' 的 env 配置", current_provider.name);
                 }
             }
 
