@@ -177,7 +177,9 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
             // 执行停用
             let app_handle = app.clone();
             tauri::async_runtime::spawn(async move {
-                if let Err(e) = disable_provider_internal(&app_handle, crate::app_config::AppType::Claude).await {
+                if let Err(e) =
+                    disable_provider_internal(&app_handle, crate::app_config::AppType::Claude).await
+                {
                     log::error!("停用Claude供应商失败: {}", e);
                 }
             });
