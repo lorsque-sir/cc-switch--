@@ -270,6 +270,36 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
                 }
             });
         }
+        id if id.starts_with("switch_url_") => {
+            // 解析URL (从菜单ID恢复URL)
+            let url_encoded = id.strip_prefix("switch_url_").unwrap();
+            let url = url_encoded.replace("_", "/").replace("//", "://");
+            log::info!("切换API地址到: {}", url);
+
+            // 执行地址切换
+            let app_handle = app.clone();
+            let url = url.to_string();
+            tauri::async_runtime::spawn(async move {
+                if let Some(app_state) = app_handle.try_state::<AppState>() {
+                    match commands::switch_provider_url(app_state.inner().clone().into(), url.clone()).await {
+                        Ok(_) => {
+                            log::info!("成功切换API地址到: {}", url);
+                            // 切换后更新托盘菜单
+                            if let Ok(new_menu) = create_tray_menu(&app_handle, app_state.inner()) {
+                                if let Some(tray) = app_handle.tray_by_id("main") {
+                                    if let Err(e) = tray.set_menu(Some(new_menu)) {
+                                        log::error!("更新托盘菜单失败: {}", e);
+                                    }
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            log::error!("切换API地址失败: {}", e);
+                        }
+                    }
+                }
+            });
+        }
         _ => {
             log::warn!("未处理的菜单事件: {}", event_id);
         }
