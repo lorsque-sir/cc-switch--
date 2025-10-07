@@ -124,7 +124,7 @@ const ClaudeConfigEditor: React.FC<ClaudeConfigEditorProps> = ({
         <p className="text-xs text-red-500 dark:text-red-400">{configError}</p>
       )}
       <p className="text-xs text-gray-500 dark:text-gray-400">
-        完整的 Claude Code settings.json 配置内容
+        仅需配置 env 字段（切换时只更新 env，保留其他用户配置）
       </p>
       {isCommonConfigModalOpen && (
         <div
