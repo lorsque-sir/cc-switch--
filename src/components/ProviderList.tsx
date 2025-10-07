@@ -17,6 +17,7 @@ interface ProviderListProps {
   providers: Record<string, Provider>;
   currentProviderId: string;
   onSwitch: (id: string) => void;
+  onDisable: () => void;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
   appType?: AppType;
