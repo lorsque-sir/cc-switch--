@@ -19,6 +19,9 @@ pub struct Provider {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "createdAt")]
     pub created_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "alternativeUrls")]
+    pub alternative_urls: Option<Vec<String>>,
 }
 
 impl Provider {

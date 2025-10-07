@@ -83,9 +83,7 @@ const BaseUrlSelector: React.FC<BaseUrlSelectorProps> = ({
                   <div
                     key={index}
                     className={`flex items-center gap-2 p-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 ${
-                      url === currentUrl
-                        ? "bg-blue-50 dark:bg-blue-900/20"
-                        : ""
+                      url === currentUrl ? "bg-blue-50 dark:bg-blue-900/20" : ""
                     }`}
                   >
                     <button

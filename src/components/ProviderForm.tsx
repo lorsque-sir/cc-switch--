@@ -430,9 +430,7 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
       // 仅在用户选择了预设或手动选择"自定义"时持久化分类
       ...(category ? { category } : {}),
       // 保存备选地址列表（仅 Claude 且有地址时添加）
-      ...(!isCodex && alternativeUrls.length > 0
-        ? { alternativeUrls }
-        : {}),
+      ...(!isCodex && alternativeUrls.length > 0 ? { alternativeUrls } : {}),
     });
   };
 
@@ -1216,8 +1214,8 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
                   <p className="text-xs text-blue-600 dark:text-blue-400">
                     💡{" "}
                     {initialData
-                      ? "修改当前供应商的API服务地址，留空则使用默认配置。使用\"快捷选择\"可保存和切换常用地址"
-                      : "填写兼容 Claude API 的服务端点地址。点击\"快捷选择\"可保存常用地址"}
+                      ? '修改当前供应商的API服务地址，留空则使用默认配置。使用"快捷选择"可保存和切换常用地址'
+                      : '填写兼容 Claude API 的服务端点地址。点击"快捷选择"可保存常用地址'}
                   </p>
                 </div>
               </div>
