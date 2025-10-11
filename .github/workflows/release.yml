@@ -15,10 +15,10 @@ jobs:
       matrix:
         include:
           - platform: 'macos-latest' # macOS (Intel)
-            args: '--target x86_64-apple-darwin'
+            args: '--target x86_64-apple-darwin --bundles app'
 
           - platform: 'macos-latest' # macOS (Apple Silicon)
-            args: '--target aarch64-apple-darwin'
+            args: '--target aarch64-apple-darwin --bundles app'
 
           - platform: 'ubuntu-22.04' # Linux
             args: ''
