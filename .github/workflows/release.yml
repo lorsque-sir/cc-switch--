@@ -7,48 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    outputs:
-      release_id: ${{ steps.create-release.outputs.result }}
-      release_upload_url: ${{ steps.create-release.outputs.upload_url }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      - name: Get version
-        run: echo "PACKAGE_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
-
-      - name: Create release
-        id: create-release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ env.PACKAGE_VERSION }}
-          release_name: CC Switch v${{ env.PACKAGE_VERSION }}
-          body: |
-            ## 🎉 CC Switch v${{ env.PACKAGE_VERSION }}
-
-            ### 下载说明
-            - **Windows**: `CC-Switch_${{ env.PACKAGE_VERSION }}_x64_en-US.msi`
-            - **macOS (Intel)**: `CC-Switch_${{ env.PACKAGE_VERSION }}_x64.dmg`
-            - **macOS (Apple Silicon)**: `CC-Switch_${{ env.PACKAGE_VERSION }}_aarch64.dmg`
-            - **Linux (AppImage)**: `cc-switch_${{ env.PACKAGE_VERSION }}_amd64.AppImage`
-            - **Linux (Deb)**: `cc-switch_${{ env.PACKAGE_VERSION }}_amd64.deb`
-
-            ### 更新内容
-            请查看提交记录了解详细更新内容。
-          draft: false
-          prerelease: false
-
   build-tauri:
-    needs: create-release
     permissions:
       contents: write
     strategy:
@@ -99,58 +58,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          releaseId: ${{ needs.create-release.outputs.release_id }}
+          tagName: ${{ github.ref_name }}
+          releaseName: 'CC Switch ${{ github.ref_name }}'
+          releaseBody: |
+            ## 🎉 CC Switch ${{ github.ref_name }}
+
+            ### 下载说明
+            请从下方的 Assets 中下载对应平台的安装包
+
+            ### 更新内容
+            请查看提交记录了解详细更新内容。
+          releaseDraft: false
+          prerelease: false
           args: ${{ matrix.args }}
-
-  # 生成 updater 所需的 latest.json
-  generate-updater-json:
-    needs: [create-release, build-tauri]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      - name: Get version
-        run: echo "PACKAGE_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
-
-      - name: Generate latest.json
-        run: |
-          cat > latest.json << EOF
-          {
-            "version": "v${{ env.PACKAGE_VERSION }}",
-            "notes": "See release notes at https://github.com/${{ github.repository }}/releases/tag/v${{ env.PACKAGE_VERSION }}",
-            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "platforms": {
-              "darwin-x86_64": {
-                "signature": "",
-                "url": "https://github.com/${{ github.repository }}/releases/download/v${{ env.PACKAGE_VERSION }}/CC-Switch_${{ env.PACKAGE_VERSION }}_x64.dmg"
-              },
-              "darwin-aarch64": {
-                "signature": "",
-                "url": "https://github.com/${{ github.repository }}/releases/download/v${{ env.PACKAGE_VERSION }}/CC-Switch_${{ env.PACKAGE_VERSION }}_aarch64.dmg"
-              },
-              "linux-x86_64": {
-                "signature": "",
-                "url": "https://github.com/${{ github.repository }}/releases/download/v${{ env.PACKAGE_VERSION }}/cc-switch_${{ env.PACKAGE_VERSION }}_amd64.AppImage"
-              },
-              "windows-x86_64": {
-                "signature": "",
-                "url": "https://github.com/${{ github.repository }}/releases/download/v${{ env.PACKAGE_VERSION }}/CC-Switch_${{ env.PACKAGE_VERSION }}_x64_en-US.msi"
-              }
-            }
-          }
-          EOF
-
-      - name: Upload latest.json to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.release_upload_url }}
-          asset_path: ./latest.json
-          asset_name: latest.json
-          asset_content_type: application/json
