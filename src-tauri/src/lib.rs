@@ -94,12 +94,11 @@ fn create_tray_menu(
                             // 为每个地址创建菜单项
                             for url in alt_urls {
                                 let is_current = url == current_url;
+                                // URL 编码：先替换 :// 为特殊标记，然后替换 /
+                                let encoded_url = url.replace("://", "___").replace('/', "__");
                                 let item = CheckMenuItem::with_id(
                                     app,
-                                    format!(
-                                        "switch_url_{}",
-                                        url.replace(['/', ':'], "_")
-                                    ),
+                                    format!("switch_url_{}", encoded_url),
                                     format!("  {}", url),
                                     true,
                                     is_current,
@@ -278,7 +277,8 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
         id if id.starts_with("switch_url_") => {
             // 解析URL (从菜单ID恢复URL)
             let url_encoded = id.strip_prefix("switch_url_").unwrap();
-            let url = url_encoded.replace("_", "/").replace("//", "://");
+            // URL 解码：先恢复 ://，然后恢复 /
+            let url = url_encoded.replace("___", "://").replace("__", "/");
             log::info!("切换API地址到: {}", url);
 
             // 执行地址切换
