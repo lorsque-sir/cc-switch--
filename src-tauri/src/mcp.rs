@@ -730,3 +730,98 @@ pub fn sync_enabled_to_codex(config: &MultiAppConfig) -> Result<(), String> {
 
     Ok(())
 }
+
+// =====================
+// v3.5.1 新增：MCP 配置双端同步功能
+// =====================
+
+/// 检查另一个应用中是否存在同名 MCP 服务器
+pub fn check_mcp_exists_in_other_app(
+    config: &MultiAppConfig,
+    source_app: &AppType,
+    id: &str,
+) -> bool {
+    let target_app = match source_app {
+        AppType::Claude => AppType::Codex,
+        AppType::Codex => AppType::Claude,
+    };
+
+    config.mcp_for(&target_app).servers.contains_key(id)
+}
+
+/// 将 MCP 服务器配置复制到另一个应用（双端同步）
+///
+/// # 参数
+/// - `config`: 应用配置
+/// - `source_app`: 源应用类型 (Claude 或 Codex)
+/// - `id`: MCP 服务器 ID
+/// - `overwrite`: 是否覆盖已存在的同名配置
+///
+/// # 返回
+/// - `Ok(true)`: 成功复制（新增或覆盖）
+/// - `Ok(false)`: 目标已存在且不覆盖
+/// - `Err`: 复制失败
+pub fn copy_mcp_to_other_app(
+    config: &mut MultiAppConfig,
+    source_app: &AppType,
+    id: &str,
+    overwrite: bool,
+) -> Result<bool, String> {
+    // 1. 从源应用获取 MCP 配置
+    let source_entry = config
+        .mcp_for(source_app)
+        .servers
+        .get(id)
+        .ok_or_else(|| format!("源 MCP 服务器 '{}' 不存在", id))?
+        .clone();
+
+    // 2. 确定目标应用
+    let target_app = match source_app {
+        AppType::Claude => AppType::Codex,
+        AppType::Codex => AppType::Claude,
+    };
+
+    // 3. 检查目标应用是否已存在同名配置
+    let exists = config.mcp_for(&target_app).servers.contains_key(id);
+    if exists && !overwrite {
+        return Ok(false);
+    }
+
+    // 4. 复制配置到目标应用
+    // 注意：复制时不启用，保持 enabled=false（或源配置的值）
+    let mut target_entry = source_entry.clone();
+
+    // 确保 enabled 字段存在且为 false（或保持源值）
+    if let Some(obj) = target_entry.as_object_mut() {
+        // 如果是新增，默认不启用；如果是覆盖，保持源的启用状态
+        if !exists {
+            obj.insert("enabled".into(), json!(false));
+        }
+    }
+
+    config
+        .mcp_for_mut(&target_app)
+        .servers
+        .insert(id.to_string(), target_entry);
+
+    log::info!(
+        "已将 MCP '{}' 从 {:?} 同步到 {:?} (覆盖: {})",
+        id,
+        source_app,
+        target_app,
+        overwrite
+    );
+
+    Ok(true)
+}
+
+/// 检查 MCP 是否已启用
+pub fn is_mcp_enabled(config: &MultiAppConfig, app: &AppType, id: &str) -> bool {
+    config
+        .mcp_for(app)
+        .servers
+        .get(id)
+        .and_then(|entry| entry.get("enabled"))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+}

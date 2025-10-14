@@ -1047,7 +1047,25 @@ pub async fn upsert_mcp_server_in_config(
         .lock()
         .map_err(|e| format!("获取锁失败: {}", e))?;
     let app_ty = crate::app_config::AppType::from(app.as_deref().unwrap_or("claude"));
+
+    // v3.5.1: 检查 MCP 是否已启用（编辑前）
+    let was_enabled = crate::mcp::is_mcp_enabled(&cfg, &app_ty, &id);
+
     let changed = crate::mcp::upsert_in_config_for(&mut cfg, &app_ty, &id, spec)?;
+
+    // v3.5.1: 如果 MCP 已启用，自动同步到 live 配置
+    if was_enabled {
+        match app_ty {
+            crate::app_config::AppType::Claude => {
+                crate::mcp::sync_enabled_to_claude(&cfg)?;
+            }
+            crate::app_config::AppType::Codex => {
+                crate::mcp::sync_enabled_to_codex(&cfg)?;
+            }
+        }
+        log::info!("已自动同步已启用的 MCP '{}' 到 live 配置", id);
+    }
+
     drop(cfg);
     state.save()?;
     Ok(changed)
@@ -1161,4 +1179,45 @@ pub async fn import_mcp_from_codex(state: State<'_, AppState>) -> Result<usize, 
         state.save()?;
     }
     Ok(changed)
+}
+
+// =====================
+// v3.5.1 新增：MCP 配置双端同步命令
+// =====================
+
+/// 检查目标应用是否存在同名 MCP 服务器
+#[tauri::command]
+pub async fn check_mcp_sync_conflict(
+    state: State<'_, AppState>,
+    app: Option<String>,
+    id: String,
+) -> Result<bool, String> {
+    let cfg = state
+        .config
+        .lock()
+        .map_err(|e| format!("获取锁失败: {}", e))?;
+    let app_ty = crate::app_config::AppType::from(app.as_deref().unwrap_or("claude"));
+    let exists = crate::mcp::check_mcp_exists_in_other_app(&cfg, &app_ty, &id);
+    Ok(exists)
+}
+
+/// 将 MCP 服务器同步到另一个应用
+#[tauri::command]
+pub async fn sync_mcp_to_other_app(
+    state: State<'_, AppState>,
+    app: Option<String>,
+    id: String,
+    overwrite: bool,
+) -> Result<bool, String> {
+    let mut cfg = state
+        .config
+        .lock()
+        .map_err(|e| format!("获取锁失败: {}", e))?;
+    let app_ty = crate::app_config::AppType::from(app.as_deref().unwrap_or("claude"));
+    let synced = crate::mcp::copy_mcp_to_other_app(&mut cfg, &app_ty, &id, overwrite)?;
+    drop(cfg);
+    if synced {
+        state.save()?;
+    }
+    Ok(synced)
 }

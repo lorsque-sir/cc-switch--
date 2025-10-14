@@ -619,6 +619,8 @@ pub fn run() {
             commands::import_mcp_from_codex,
             commands::sync_enabled_mcp_to_claude,
             commands::sync_enabled_mcp_to_codex,
+            commands::check_mcp_sync_conflict,
+            commands::sync_mcp_to_other_app,
             commands::get_settings,
             commands::save_settings,
             commands::check_for_updates,

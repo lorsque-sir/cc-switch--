@@ -416,6 +416,30 @@ export const tauriAPI = {
       throw error;
     }
   },
+
+  // v3.5.1: 检查 MCP 双端同步冲突
+  checkMcpSyncConflict: async (app: AppType, id: string): Promise<boolean> => {
+    try {
+      return await invoke("check_mcp_sync_conflict", { app, id });
+    } catch (error) {
+      console.error("检查 MCP 同步冲突失败:", error);
+      throw error;
+    }
+  },
+
+  // v3.5.1: 同步 MCP 到另一应用
+  syncMcpToOtherApp: async (
+    app: AppType,
+    id: string,
+    overwrite: boolean,
+  ): Promise<boolean> => {
+    try {
+      return await invoke("sync_mcp_to_other_app", { app, id, overwrite });
+    } catch (error) {
+      console.error("同步 MCP 到另一应用失败:", error);
+      throw error;
+    }
+  },
 };
 
 // 创建全局 API 对象，兼容现有代码
