@@ -1,8 +1,10 @@
 mod app_config;
+mod claude_mcp;
 mod claude_plugin;
 mod codex_config;
 mod commands;
 mod config;
+mod mcp;
 mod migration;
 mod provider;
 mod settings;
@@ -609,6 +611,14 @@ pub fn run() {
             commands::open_external,
             commands::get_app_config_path,
             commands::open_app_config_folder,
+            commands::get_mcp_config,
+            commands::upsert_mcp_server_in_config,
+            commands::delete_mcp_server_in_config,
+            commands::set_mcp_enabled,
+            commands::import_mcp_from_claude,
+            commands::import_mcp_from_codex,
+            commands::sync_enabled_mcp_to_claude,
+            commands::sync_enabled_mcp_to_codex,
             commands::get_settings,
             commands::save_settings,
             commands::check_for_updates,

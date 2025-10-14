@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
-import { Provider, Settings } from "../types";
+import { Provider, Settings, McpConfigResponse, McpServer } from "../types";
 
 // 应用类型
 export type AppType = "claude" | "codex";
@@ -307,6 +307,113 @@ export const tauriAPI = {
       });
     } catch (error) {
       throw new Error(`同步供应商配置失败: ${String(error)}`);
+    }
+  },
+
+  // ========== MCP 相关 API ==========
+
+  // 获取 MCP 配置
+  getMcpConfig: async (app?: AppType): Promise<McpConfigResponse> => {
+    try {
+      return await invoke("get_mcp_config", { app_type: app, app });
+    } catch (error) {
+      console.error("获取 MCP 配置失败:", error);
+      throw error;
+    }
+  },
+
+  // 添加或更新 MCP 服务器
+  upsertMcpServerInConfig: async (
+    app: AppType,
+    id: string,
+    server: McpServer,
+  ): Promise<boolean> => {
+    try {
+      return await invoke("upsert_mcp_server_in_config", {
+        app_type: app,
+        app,
+        id,
+        server,
+      });
+    } catch (error) {
+      console.error("添加/更新 MCP 服务器失败:", error);
+      throw error;
+    }
+  },
+
+  // 删除 MCP 服务器
+  deleteMcpServerInConfig: async (
+    app: AppType,
+    id: string,
+  ): Promise<boolean> => {
+    try {
+      return await invoke("delete_mcp_server_in_config", {
+        app_type: app,
+        app,
+        id,
+      });
+    } catch (error) {
+      console.error("删除 MCP 服务器失败:", error);
+      throw error;
+    }
+  },
+
+  // 设置 MCP 服务器启用状态
+  setMcpEnabled: async (
+    app: AppType,
+    id: string,
+    enabled: boolean,
+  ): Promise<boolean> => {
+    try {
+      return await invoke("set_mcp_enabled", {
+        app_type: app,
+        app,
+        id,
+        enabled,
+      });
+    } catch (error) {
+      console.error("设置 MCP 启用状态失败:", error);
+      throw error;
+    }
+  },
+
+  // 从 Claude 导入 MCP 配置
+  importMcpFromClaude: async (): Promise<boolean> => {
+    try {
+      return await invoke("import_mcp_from_claude");
+    } catch (error) {
+      console.error("从 Claude 导入 MCP 失败:", error);
+      throw error;
+    }
+  },
+
+  // 从 Codex 导入 MCP 配置
+  importMcpFromCodex: async (): Promise<boolean> => {
+    try {
+      return await invoke("import_mcp_from_codex");
+    } catch (error) {
+      console.error("从 Codex 导入 MCP 失败:", error);
+      throw error;
+    }
+  },
+
+  // 同步已启用的 MCP 到 Claude
+  syncEnabledMcpToClaude: async (): Promise<boolean> => {
+    try {
+      return await invoke("sync_enabled_mcp_to_claude");
+    } catch (error) {
+      console.error("同步 MCP 到 Claude 失败:", error);
+      throw error;
+    }
+  },
+
+  // 同步已启用的 MCP 到 Codex
+  syncEnabledMcpToCodex: async (): Promise<boolean> => {
+    try {
+      return await invoke("sync_enabled_mcp_to_codex");
+    } catch (error) {
+      console.error("同步 MCP 到 Codex 失败:", error);
+      throw error;
     }
   },
 };

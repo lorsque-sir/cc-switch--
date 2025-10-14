@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import { Provider, Settings } from "./types";
+import { Provider, Settings, McpConfigResponse, McpServer } from "./types";
 import { AppType } from "./lib/tauri-api";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 
@@ -57,6 +57,23 @@ declare global {
         official: boolean;
       }) => Promise<boolean>;
       isClaudePluginApplied: () => Promise<boolean>;
+      // MCP 管理能力
+      getMcpConfig: (app?: AppType) => Promise<McpConfigResponse>;
+      upsertMcpServerInConfig: (
+        app: AppType,
+        id: string,
+        server: McpServer,
+      ) => Promise<boolean>;
+      deleteMcpServerInConfig: (app: AppType, id: string) => Promise<boolean>;
+      setMcpEnabled: (
+        app: AppType,
+        id: string,
+        enabled: boolean,
+      ) => Promise<boolean>;
+      importMcpFromClaude: () => Promise<boolean>;
+      importMcpFromCodex: () => Promise<boolean>;
+      syncEnabledMcpToClaude: () => Promise<boolean>;
+      syncEnabledMcpToCodex: () => Promise<boolean>;
     };
     platform: {
       isMac: boolean;
