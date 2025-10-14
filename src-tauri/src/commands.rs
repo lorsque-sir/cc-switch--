@@ -136,10 +136,20 @@ pub async fn add_provider(
                     serde_json::json!({})
                 };
 
-                // 从供应商提取 env 字段并合并（只更新 env 字段）
+                // 只更新 env 中的 ANTHROPIC_AUTH_TOKEN 和 ANTHROPIC_BASE_URL
                 if let Some(provider_env) = provider.settings_config.get("env") {
                     if let Some(config_obj) = final_config.as_object_mut() {
-                        config_obj.insert("env".to_string(), provider_env.clone());
+                        // 获取或创建 env 对象
+                        let env = config_obj.entry("env").or_insert(serde_json::json!({}));
+                        if let Some(env_obj) = env.as_object_mut() {
+                            // 只更新两个特定字段
+                            if let Some(token) = provider_env.get("ANTHROPIC_AUTH_TOKEN") {
+                                env_obj.insert("ANTHROPIC_AUTH_TOKEN".to_string(), token.clone());
+                            }
+                            if let Some(base_url) = provider_env.get("ANTHROPIC_BASE_URL") {
+                                env_obj.insert("ANTHROPIC_BASE_URL".to_string(), base_url.clone());
+                            }
+                        }
                     }
                 }
 
@@ -226,10 +236,20 @@ pub async fn update_provider(
                     serde_json::json!({})
                 };
 
-                // 从供应商提取 env 字段并合并（只更新 env 字段）
+                // 只更新 env 中的 ANTHROPIC_AUTH_TOKEN 和 ANTHROPIC_BASE_URL
                 if let Some(provider_env) = provider.settings_config.get("env") {
                     if let Some(config_obj) = final_config.as_object_mut() {
-                        config_obj.insert("env".to_string(), provider_env.clone());
+                        // 获取或创建 env 对象
+                        let env = config_obj.entry("env").or_insert(serde_json::json!({}));
+                        if let Some(env_obj) = env.as_object_mut() {
+                            // 只更新两个特定字段
+                            if let Some(token) = provider_env.get("ANTHROPIC_AUTH_TOKEN") {
+                                env_obj.insert("ANTHROPIC_AUTH_TOKEN".to_string(), token.clone());
+                            }
+                            if let Some(base_url) = provider_env.get("ANTHROPIC_BASE_URL") {
+                                env_obj.insert("ANTHROPIC_BASE_URL".to_string(), base_url.clone());
+                            }
+                        }
                     }
                 }
 
@@ -429,10 +449,20 @@ pub async fn switch_provider(
                 serde_json::json!({})
             };
 
-            // 从目标供应商提取 env 字段并合并
+            // 只更新 env 中的 ANTHROPIC_AUTH_TOKEN 和 ANTHROPIC_BASE_URL
             if let Some(provider_env) = provider.settings_config.get("env") {
                 if let Some(config_obj) = final_config.as_object_mut() {
-                    config_obj.insert("env".to_string(), provider_env.clone());
+                    // 获取或创建 env 对象
+                    let env = config_obj.entry("env").or_insert(serde_json::json!({}));
+                    if let Some(env_obj) = env.as_object_mut() {
+                        // 只更新两个特定字段
+                        if let Some(token) = provider_env.get("ANTHROPIC_AUTH_TOKEN") {
+                            env_obj.insert("ANTHROPIC_AUTH_TOKEN".to_string(), token.clone());
+                        }
+                        if let Some(base_url) = provider_env.get("ANTHROPIC_BASE_URL") {
+                            env_obj.insert("ANTHROPIC_BASE_URL".to_string(), base_url.clone());
+                        }
+                    }
                 }
             }
 
