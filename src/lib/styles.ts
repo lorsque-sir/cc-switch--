@@ -23,6 +23,9 @@ export const buttonStyles = {
   // 图标按钮：小尺寸，仅图标
   icon: "p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors",
 
+  // MCP 按钮：翠绿色主题
+  mcp: "px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700 transition-colors text-sm font-medium",
+
   // 禁用态：可与其他样式组合
   disabled: "opacity-50 cursor-not-allowed pointer-events-none",
 } as const;
