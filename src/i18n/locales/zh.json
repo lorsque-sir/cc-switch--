@@ -199,7 +199,20 @@
       "deleted": "已删除",
       "enabled": "已启用",
       "disabled": "已禁用",
-      "templateAdded": "已添加模板"
+      "templateAdded": "已添加模板",
+      "synced": "已同步到{{targetApp}}",
+      "syncSkipped": "目标应用已存在同名配置，已跳过"
+    },
+    "sync": {
+      "title": "同步到另一应用",
+      "syncToOtherApp": "同步到{{targetApp}}",
+      "description": "将此 MCP 配置同步到另一应用（{{targetApp}}）",
+      "conflictTitle": "同步冲突",
+      "conflictMessage": "{{targetApp}} 已存在同名 MCP \"{{id}}\"，是否覆盖？",
+      "overwrite": "覆盖",
+      "skip": "跳过",
+      "checking": "检测中...",
+      "syncFailed": "同步失败"
     },
     "error": {
       "idRequired": "请填写标识",

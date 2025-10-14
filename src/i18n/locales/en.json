@@ -199,7 +199,20 @@
       "deleted": "Deleted",
       "enabled": "Enabled",
       "disabled": "Disabled",
-      "templateAdded": "Template added"
+      "templateAdded": "Template added",
+      "synced": "Synced to {{targetApp}}",
+      "syncSkipped": "Target app already has this MCP, skipped"
+    },
+    "sync": {
+      "title": "Sync to Other App",
+      "syncToOtherApp": "Sync to {{targetApp}}",
+      "description": "Sync this MCP configuration to another app ({{targetApp}})",
+      "conflictTitle": "Sync Conflict",
+      "conflictMessage": "{{targetApp}} already has MCP \"{{id}}\", overwrite?",
+      "overwrite": "Overwrite",
+      "skip": "Skip",
+      "checking": "Checking...",
+      "syncFailed": "Sync failed"
     },
     "error": {
       "idRequired": "Please enter identifier",

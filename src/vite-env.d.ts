@@ -74,6 +74,13 @@ declare global {
       importMcpFromCodex: () => Promise<boolean>;
       syncEnabledMcpToClaude: () => Promise<boolean>;
       syncEnabledMcpToCodex: () => Promise<boolean>;
+      // v3.5.1: MCP 双端同步
+      checkMcpSyncConflict: (app: AppType, id: string) => Promise<boolean>;
+      syncMcpToOtherApp: (
+        app: AppType,
+        id: string,
+        overwrite: boolean,
+      ) => Promise<boolean>;
     };
     platform: {
       isMac: boolean;

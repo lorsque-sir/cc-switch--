@@ -114,6 +114,11 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [idError, setIdError] = useState("");
 
+  // v3.5.1: 双端同步状态
+  const [syncToOtherApp, setSyncToOtherApp] = useState(false);
+  const [showSyncConfirm, setShowSyncConfirm] = useState(false);
+  const [syncChecking, setSyncChecking] = useState(false);
+
   // 判断是否使用 TOML 格式
   const useToml = appType === "codex";
 
@@ -279,6 +284,30 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
     }
   };
 
+  // v3.5.1: 执行同步到另一应用
+  const performSync = async (id: string, overwrite: boolean) => {
+    try {
+      const synced = await window.api.syncMcpToOtherApp(
+        appType,
+        id,
+        overwrite,
+      );
+      if (synced) {
+        const targetApp = appType === "claude" ? "Codex" : "Claude Code";
+        onNotify?.(
+          t("mcp.msg.synced", { targetApp }),
+          "success",
+          3000,
+        );
+      } else {
+        onNotify?.(t("mcp.msg.syncSkipped"), "success", 3000);
+      }
+    } catch (error: any) {
+      const detail = extractErrorMessage(error);
+      onNotify?.(detail || t("mcp.sync.syncFailed"), "error", 4000);
+    }
+  };
+
   const handleSubmit = async () => {
     const trimmedId = formId.trim();
     if (!trimmedId) {
@@ -408,6 +437,34 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
 
       // 显式等待父组件保存流程
       await onSave(trimmedId, entry);
+
+      // v3.5.1: 保存成功后执行双端同步（仅编辑模式）
+      if (isEditing && syncToOtherApp) {
+        try {
+          setSyncChecking(true);
+          const hasConflict = await window.api.checkMcpSyncConflict(
+            appType,
+            trimmedId,
+          );
+
+          if (hasConflict) {
+            // 有冲突，显示确认对话框
+            setShowSyncConfirm(true);
+          } else {
+            // 无冲突，直接同步
+            await performSync(trimmedId, false);
+          }
+        } catch (error: any) {
+          const detail = extractErrorMessage(error);
+          onNotify?.(
+            detail || t("mcp.sync.syncFailed"),
+            "error",
+            4000,
+          );
+        } finally {
+          setSyncChecking(false);
+        }
+      }
     } catch (error: any) {
       const detail = extractErrorMessage(error);
       const mapped = translateMcpBackendError(detail, t);
@@ -633,25 +690,47 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200 rounded-lg transition-colors text-sm font-medium"
-          >
-            {t("common.cancel")}
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={saving || (!isEditing && !!idError)}
-            className={`inline-flex items-center gap-2 ${buttonStyles.mcp}`}
-          >
-            <Save size={16} />
-            {saving
-              ? t("common.saving")
-              : isEditing
-                ? t("common.save")
-                : t("common.add")}
-          </button>
+        <div className="flex-shrink-0 flex items-center justify-between gap-3 p-6 border-t border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800">
+          {/* 左侧：同步复选框（仅编辑模式） */}
+          {isEditing && (
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={syncToOtherApp}
+                onChange={(e) => setSyncToOtherApp(e.target.checked)}
+                disabled={saving || syncChecking}
+                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-emerald-500 focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 disabled:opacity-50"
+              />
+              <span>
+                {t("mcp.sync.syncToOtherApp", {
+                  targetApp: appType === "claude" ? "Codex" : "Claude Code",
+                })}
+              </span>
+            </label>
+          )}
+          {!isEditing && <div />} {/* 占位符，保持右侧按钮对齐 */}
+
+          {/* 右侧：操作按钮 */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200 rounded-lg transition-colors text-sm font-medium"
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={saving || (!isEditing && !!idError) || syncChecking}
+              className={`inline-flex items-center gap-2 ${buttonStyles.mcp}`}
+            >
+              <Save size={16} />
+              {saving || syncChecking
+                ? t("common.loading")
+                : isEditing
+                  ? t("common.save")
+                  : t("common.add")}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -662,6 +741,44 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
         onApply={handleWizardApply}
         onNotify={onNotify}
       />
+
+      {/* v3.5.1: 同步冲突确认对话框 */}
+      {showSyncConfirm && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowSyncConfirm(false)}
+          />
+          <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-lg max-w-md w-full mx-4 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              {t("mcp.sync.conflictTitle")}
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              {t("mcp.sync.conflictMessage", {
+                targetApp: appType === "claude" ? "Codex" : "Claude Code",
+                id: formId,
+              })}
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowSyncConfirm(false)}
+                className="px-4 py-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-sm font-medium"
+              >
+                {t("mcp.sync.skip")}
+              </button>
+              <button
+                onClick={async () => {
+                  setShowSyncConfirm(false);
+                  await performSync(formId, true);
+                }}
+                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                {t("mcp.sync.overwrite")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
