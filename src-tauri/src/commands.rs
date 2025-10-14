@@ -126,8 +126,25 @@ pub async fn add_provider(
     if is_current {
         match app_type {
             AppType::Claude => {
+                use crate::config::{read_json_file, write_json_file};
                 let settings_path = crate::config::get_claude_settings_path();
-                crate::config::write_json_file(&settings_path, &provider.settings_config)?;
+
+                // 读取现有配置（如果存在）
+                let mut final_config = if settings_path.exists() {
+                    read_json_file::<serde_json::Value>(&settings_path).unwrap_or(serde_json::json!({}))
+                } else {
+                    serde_json::json!({})
+                };
+
+                // 从供应商提取 env 字段并合并（只更新 env 字段）
+                if let Some(provider_env) = provider.settings_config.get("env") {
+                    if let Some(config_obj) = final_config.as_object_mut() {
+                        config_obj.insert("env".to_string(), provider_env.clone());
+                    }
+                }
+
+                // 写入合并后的配置
+                write_json_file(&settings_path, &final_config)?;
             }
             AppType::Codex => {
                 let auth = provider
@@ -199,8 +216,25 @@ pub async fn update_provider(
     if is_current {
         match app_type {
             AppType::Claude => {
+                use crate::config::{read_json_file, write_json_file};
                 let settings_path = crate::config::get_claude_settings_path();
-                crate::config::write_json_file(&settings_path, &provider.settings_config)?;
+
+                // 读取现有配置（如果存在）
+                let mut final_config = if settings_path.exists() {
+                    read_json_file::<serde_json::Value>(&settings_path).unwrap_or(serde_json::json!({}))
+                } else {
+                    serde_json::json!({})
+                };
+
+                // 从供应商提取 env 字段并合并（只更新 env 字段）
+                if let Some(provider_env) = provider.settings_config.get("env") {
+                    if let Some(config_obj) = final_config.as_object_mut() {
+                        config_obj.insert("env".to_string(), provider_env.clone());
+                    }
+                }
+
+                // 写入合并后的配置
+                write_json_file(&settings_path, &final_config)?;
             }
             AppType::Codex => {
                 let auth = provider
