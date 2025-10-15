@@ -42,7 +42,12 @@
     "applyToVSCode": "应用到 VS Code",
     "removeFromVSCode": "从 VS Code 移除",
     "applyToClaudePlugin": "应用到 Claude 插件",
-    "removeFromClaudePlugin": "从 Claude 插件移除"
+    "removeFromClaudePlugin": "从 Claude 插件移除",
+    "testSpeed": "测速",
+    "testing": "测试中...",
+    "testSpeedTooltip": "测试端点响应速度",
+    "latency": "延迟",
+    "speedTestFailed": "测速失败"
   },
   "notifications": {
     "providerSaved": "供应商配置已保存",

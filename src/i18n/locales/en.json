@@ -42,7 +42,12 @@
     "applyToVSCode": "Apply to VS Code",
     "removeFromVSCode": "Remove from VS Code",
     "applyToClaudePlugin": "Apply to Claude plugin",
-    "removeFromClaudePlugin": "Remove from Claude plugin"
+    "removeFromClaudePlugin": "Remove from Claude plugin",
+    "testSpeed": "Test Speed",
+    "testing": "Testing...",
+    "testSpeedTooltip": "Test endpoint response time",
+    "latency": "Latency",
+    "speedTestFailed": "Speed test failed"
   },
   "notifications": {
     "providerSaved": "Provider configuration saved",

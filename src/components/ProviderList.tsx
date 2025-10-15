@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Provider } from "../types";
-import { Play, Edit3, Trash2, CheckCircle2, Users, Check } from "lucide-react";
+import { Play, Edit3, Trash2, CheckCircle2, Users, Check, Zap, Loader2 } from "lucide-react";
 import { buttonStyles, cardStyles, badgeStyles, cn } from "../lib/styles";
-import { AppType } from "../lib/tauri-api";
+import { AppType, EndpointLatency } from "../lib/tauri-api";
 import {
   applyProviderToVSCode,
   detectApplied,
@@ -232,6 +232,58 @@ const ProviderList: React.FC<ProviderListProps> = ({
     }
   };
 
+  // 测速状态管理
+  const [testingProviderId, setTestingProviderId] = useState<string | null>(null);
+  const [speedTestResults, setSpeedTestResults] = useState<Record<string, EndpointLatency>>({});
+
+  // 处理测速
+  const handleTestSpeed = async (provider: Provider) => {
+    const url = getApiUrl(provider);
+
+    // 跳过未配置或错误的URL
+    if (url === t("provider.notConfigured") || url === t("provider.configError")) {
+      onNotify?.(t("provider.speedTestFailed"), "error", 3000);
+      return;
+    }
+
+    setTestingProviderId(provider.id);
+
+    try {
+      const results = await window.api.testEndpoints([url], 8);
+      if (results && results.length > 0) {
+        setSpeedTestResults((prev) => ({
+          ...prev,
+          [provider.id]: results[0],
+        }));
+
+        if (results[0].error) {
+          onNotify?.(
+            `${t("provider.speedTestFailed")}: ${results[0].error}`,
+            "error",
+            4000
+          );
+        }
+      }
+    } catch (error: any) {
+      console.error("测速失败:", error);
+      onNotify?.(
+        error?.message || t("provider.speedTestFailed"),
+        "error",
+        3000
+      );
+    } finally {
+      setTestingProviderId(null);
+    }
+  };
+
+  // 根据延迟返回颜色类
+  const getLatencyColor = (latency: number | null): string => {
+    if (!latency) return "text-gray-500";
+    if (latency < 200) return "text-green-500";
+    if (latency < 500) return "text-yellow-500";
+    return "text-red-500";
+  };
+
   // 对供应商列表进行排序
   const sortedProviders = Object.values(providers).sort((a, b) => {
     // 按添加时间排序
@@ -318,6 +370,20 @@ const ProviderList: React.FC<ProviderListProps> = ({
                           {apiUrl}
                         </span>
                       )}
+                      {/* 测速结果显示 */}
+                      {speedTestResults[provider.id] && (
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 text-xs font-medium",
+                            getLatencyColor(speedTestResults[provider.id].latency)
+                          )}
+                        >
+                          <Zap size={12} />
+                          {speedTestResults[provider.id].latency ?
+                            `${speedTestResults[provider.id].latency}ms` :
+                            t("provider.speedTestFailed")}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -380,6 +446,24 @@ const ProviderList: React.FC<ProviderListProps> = ({
                         )}
                       </div>
                     ) : null}
+
+                    {/* 测速按钮 */}
+                    <button
+                      onClick={() => handleTestSpeed(provider)}
+                      disabled={testingProviderId === provider.id}
+                      className={cn(
+                        buttonStyles.icon,
+                        testingProviderId === provider.id && "opacity-50 cursor-wait"
+                      )}
+                      title={t("provider.testSpeedTooltip")}
+                    >
+                      {testingProviderId === provider.id ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Zap size={16} />
+                      )}
+                    </button>
+
                     {appType === "claude" && isCurrent ? (
                       <button
                         onClick={onDisable}

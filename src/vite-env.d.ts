@@ -15,6 +15,13 @@ interface ConfigStatus {
   error?: string;
 }
 
+interface EndpointLatency {
+  url: string;
+  latency: number | null;
+  status: number | null;
+  error: string | null;
+}
+
 declare global {
   interface Window {
     api: {
@@ -81,6 +88,11 @@ declare global {
         id: string,
         overwrite: boolean,
       ) => Promise<boolean>;
+      // 端点测速
+      testEndpoints: (
+        urls: string[],
+        timeoutSecs?: number,
+      ) => Promise<EndpointLatency[]>;
     };
     platform: {
       isMac: boolean;
