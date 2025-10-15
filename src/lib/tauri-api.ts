@@ -18,6 +18,14 @@ interface ImportResult {
   message?: string;
 }
 
+// 定义端点延迟测试结果类型
+export interface EndpointLatency {
+  url: string;
+  latency: number | null;
+  status: number | null;
+  error: string | null;
+}
+
 // Tauri API 封装，提供统一的全局 API 接口
 export const tauriAPI = {
   // 获取所有供应商
@@ -437,6 +445,24 @@ export const tauriAPI = {
       return await invoke("sync_mcp_to_other_app", { app, id, overwrite });
     } catch (error) {
       console.error("同步 MCP 到另一应用失败:", error);
+      throw error;
+    }
+  },
+
+  // ========== 端点测速 API ==========
+
+  // 测试端点速度
+  testEndpoints: async (
+    urls: string[],
+    timeoutSecs?: number,
+  ): Promise<EndpointLatency[]> => {
+    try {
+      return await invoke("test_endpoints", {
+        urls,
+        timeout_secs: timeoutSecs,
+      });
+    } catch (error) {
+      console.error("测试端点速度失败:", error);
       throw error;
     }
   },

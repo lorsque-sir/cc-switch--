@@ -8,6 +8,7 @@ mod mcp;
 mod migration;
 mod provider;
 mod settings;
+mod speedtest;
 mod store;
 mod vscode;
 
@@ -632,6 +633,7 @@ pub fn run() {
             commands::read_claude_plugin_config,
             commands::apply_claude_plugin_config,
             commands::is_claude_plugin_applied,
+            commands::test_endpoints,
             update_tray_menu,
         ]);
 

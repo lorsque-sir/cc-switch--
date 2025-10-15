@@ -1285,3 +1285,16 @@ pub async fn sync_mcp_to_other_app(
     }
     Ok(synced)
 }
+
+// =====================
+// 端点测速命令
+// =====================
+
+/// 测试多个端点的响应速度
+#[tauri::command]
+pub async fn test_endpoints(
+  urls: Vec<String>,
+  timeout_secs: Option<u64>,
+) -> Result<Vec<crate::speedtest::EndpointLatency>, String> {
+  crate::speedtest::test_endpoints(urls, timeout_secs).await
+}
