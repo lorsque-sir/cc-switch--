@@ -426,11 +426,11 @@ pub async fn switch_provider(
 
             let settings_path = get_claude_settings_path();
 
-            // 回填：只回填 env 字段到当前供应商
+            // 回填：回填 env 字段到当前供应商（包含模型配置）
             if settings_path.exists() && !manager.current.is_empty() {
                 if let Ok(live) = read_json_file::<serde_json::Value>(&settings_path) {
                     if let Some(cur) = manager.providers.get_mut(&manager.current) {
-                        // 只提取并保存 env 字段
+                        // 提取并保存完整的 env 字段（包括模型配置）
                         if let Some(env) = live.get("env") {
                             cur.settings_config = serde_json::json!({
                                 "env": env.clone()
@@ -452,18 +452,33 @@ pub async fn switch_provider(
                 serde_json::json!({})
             };
 
-            // 只更新 env 中的 ANTHROPIC_AUTH_TOKEN 和 ANTHROPIC_BASE_URL
+            // 更新 env 中的 API 配置字段和模型配置
             if let Some(provider_env) = provider.settings_config.get("env") {
                 if let Some(config_obj) = final_config.as_object_mut() {
                     // 获取或创建 env 对象
                     let env = config_obj.entry("env").or_insert(serde_json::json!({}));
                     if let Some(env_obj) = env.as_object_mut() {
-                        // 只更新两个特定字段
+                        // 更新 API 认证字段
                         if let Some(token) = provider_env.get("ANTHROPIC_AUTH_TOKEN") {
                             env_obj.insert("ANTHROPIC_AUTH_TOKEN".to_string(), token.clone());
                         }
                         if let Some(base_url) = provider_env.get("ANTHROPIC_BASE_URL") {
                             env_obj.insert("ANTHROPIC_BASE_URL".to_string(), base_url.clone());
+                        }
+                        
+                        // 更新模型配置（如果供应商有配置）
+                        if let Some(model) = provider_env.get("ANTHROPIC_MODEL") {
+                            env_obj.insert("ANTHROPIC_MODEL".to_string(), model.clone());
+                        } else {
+                            // 如果新供应商没有配置模型，移除旧的模型配置
+                            env_obj.remove("ANTHROPIC_MODEL");
+                        }
+                        
+                        if let Some(small_model) = provider_env.get("ANTHROPIC_SMALL_FAST_MODEL") {
+                            env_obj.insert("ANTHROPIC_SMALL_FAST_MODEL".to_string(), small_model.clone());
+                        } else {
+                            // 如果新供应商没有配置小模型，移除旧的配置
+                            env_obj.remove("ANTHROPIC_SMALL_FAST_MODEL");
                         }
                     }
                 }
