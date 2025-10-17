@@ -13,8 +13,8 @@ mod store;
 mod vscode;
 
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{Duration, Instant};
 use store::AppState;
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuBuilder, MenuItem},
@@ -393,8 +393,28 @@ async fn disable_provider_internal(
     Ok(())
 }
 
-/// 切换主窗口显示/隐藏
-fn toggle_main_window(app: &tauri::AppHandle) {
+/// 全局快捷键防抖时间戳
+fn last_shortcut_trigger() -> &'static Mutex<Option<Instant>> {
+    static LAST_TRIGGER: OnceLock<Mutex<Option<Instant>>> = OnceLock::new();
+    LAST_TRIGGER.get_or_init(|| Mutex::new(None))
+}
+
+/// 切换主窗口显示/隐藏（带防抖机制）
+pub(crate) fn toggle_main_window(app: &tauri::AppHandle) {
+    // 防抖：300ms 内只响应一次
+    let mut last_time = last_shortcut_trigger().lock().unwrap();
+    let now = Instant::now();
+    
+    if let Some(last) = *last_time {
+        if now.duration_since(last) < Duration::from_millis(300) {
+            log::debug!("快捷键触发过快，已忽略（防抖）");
+            return;
+        }
+    }
+    
+    *last_time = Some(now);
+    drop(last_time);
+    
     if let Some(window) = app.get_webview_window("main") {
         if let Ok(is_visible) = window.is_visible() {
             if is_visible {
@@ -634,17 +654,29 @@ pub fn run() {
             let settings = crate::settings::get_settings();
             if let Some(shortcut_str) = settings.global_shortcut {
                 if !shortcut_str.is_empty() {
-                    if let Ok(shortcut) = Shortcut::from_str(&shortcut_str) {
-                        let app_handle = app.handle().clone();
-                        if let Err(e) = app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, _event| {
-                            toggle_main_window(&app_handle);
-                        }) {
-                            log::warn!("注册全局快捷键失败: {}", e);
-                        } else {
-                            log::info!("已注册全局快捷键: {}", shortcut_str);
+                    match Shortcut::from_str(&shortcut_str) {
+                        Ok(shortcut) => {
+                            let app_handle = app.handle().clone();
+                            match app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, _event| {
+                                // 使用防抖机制避免快速重复触发
+                                toggle_main_window(&app_handle);
+                            }) {
+                                Ok(_) => {
+                                    log::info!("已注册全局快捷键: {}", shortcut_str);
+                                }
+                                Err(e) => {
+                                    log::error!("注册全局快捷键失败: {}", e);
+                                    // 通知前端显示错误
+                                    let error_msg = format!("全局快捷键 \"{}\" 注册失败: {}", shortcut_str, e);
+                                    let _ = app.emit("global-shortcut-error", error_msg);
+                                }
+                            }
                         }
-                    } else {
-                        log::warn!("快捷键格式无效: {}", shortcut_str);
+                        Err(e) => {
+                            log::error!("快捷键格式无效: {} - {}", shortcut_str, e);
+                            let error_msg = format!("快捷键格式无效: \"{}\" - {}", shortcut_str, e);
+                            let _ = app.emit("global-shortcut-error", error_msg);
+                        }
                     }
                 }
             }

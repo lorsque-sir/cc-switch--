@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use std::str::FromStr;
-use tauri::{Manager, State};
+use tauri::State;
 use tauri_plugin_autostart::ManagerExt as AutostartManagerExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
@@ -1008,25 +1008,8 @@ pub async fn save_settings(
                     .map_err(|e| format!("快捷键格式无效: {}", e))?;
                 let app_handle = app.clone();
                 if let Err(e) = app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, _event| {
-                    if let Some(window) = app_handle.get_webview_window("main") {
-                        if let Ok(is_visible) = window.is_visible() {
-                            if is_visible {
-                                let _ = window.hide();
-                                #[cfg(target_os = "windows")]
-                                {
-                                    let _ = window.set_skip_taskbar(true);
-                                }
-                            } else {
-                                #[cfg(target_os = "windows")]
-                                {
-                                    let _ = window.set_skip_taskbar(false);
-                                }
-                                let _ = window.unminimize();
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-                        }
-                    }
+                    // 使用防抖机制避免快速重复触发
+                    crate::toggle_main_window(&app_handle);
                 }) {
                     log::error!("注册全局快捷键失败: {}", e);
                     return Err(format!("注册全局快捷键失败: {}", e));
@@ -1086,25 +1069,8 @@ pub async fn register_global_shortcut(
     let app_handle = app.clone();
     app.global_shortcut()
         .on_shortcut(shortcut, move |_app, _shortcut, _event| {
-            if let Some(window) = app_handle.get_webview_window("main") {
-                if let Ok(is_visible) = window.is_visible() {
-                    if is_visible {
-                        let _ = window.hide();
-                        #[cfg(target_os = "windows")]
-                        {
-                            let _ = window.set_skip_taskbar(true);
-                        }
-                    } else {
-                        #[cfg(target_os = "windows")]
-                        {
-                            let _ = window.set_skip_taskbar(false);
-                        }
-                        let _ = window.unminimize();
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
-                }
-            }
+            // 使用防抖机制避免快速重复触发
+            crate::toggle_main_window(&app_handle);
         })
         .map_err(|e| format!("注册全局快捷键失败: {}", e))?;
 
