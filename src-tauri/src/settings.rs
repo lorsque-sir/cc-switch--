@@ -17,6 +17,10 @@ pub struct AppSettings {
     pub codex_config_dir: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
+    #[serde(default)]
+    pub auto_start: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub global_shortcut: Option<String>,
 }
 
 fn default_show_in_tray() -> bool {
@@ -35,6 +39,8 @@ impl Default for AppSettings {
             claude_config_dir: None,
             codex_config_dir: None,
             language: None,
+            auto_start: false,
+            global_shortcut: None,
         }
     }
 }
@@ -64,6 +70,13 @@ impl AppSettings {
             .as_ref()
             .map(|s| s.trim())
             .filter(|s| matches!(*s, "en" | "zh"))
+            .map(|s| s.to_string());
+
+        self.global_shortcut = self
+            .global_shortcut
+            .as_ref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
             .map(|s| s.to_string());
     }
 

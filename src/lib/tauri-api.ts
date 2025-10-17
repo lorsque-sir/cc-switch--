@@ -223,6 +223,8 @@ export const tauriAPI = {
         showInTray: true,
         minimizeToTrayOnClose: false,
         language: "zh",
+        autoStart: false,
+        globalShortcut: undefined,
       };
     }
   },
@@ -233,6 +235,56 @@ export const tauriAPI = {
       return await invoke("save_settings", { settings });
     } catch (error) {
       console.error("保存设置失败:", error);
+      return false;
+    }
+  },
+
+  // 获取开机自启动状态
+  getAutostartStatus: async (): Promise<boolean> => {
+    try {
+      return await invoke("get_autostart_status");
+    } catch (error) {
+      console.error("获取开机自启动状态失败:", error);
+      return false;
+    }
+  },
+
+  // 设置开机自启动
+  setAutostart: async (enable: boolean): Promise<boolean> => {
+    try {
+      return await invoke("set_autostart", { enable });
+    } catch (error) {
+      console.error("设置开机自启动失败:", error);
+      return false;
+    }
+  },
+
+  // 注册全局快捷键
+  registerGlobalShortcut: async (shortcut: string): Promise<boolean> => {
+    try {
+      return await invoke("register_global_shortcut", { shortcut });
+    } catch (error) {
+      console.error("注册全局快捷键失败:", error);
+      return false;
+    }
+  },
+
+  // 注销全局快捷键
+  unregisterGlobalShortcut: async (shortcut: string): Promise<boolean> => {
+    try {
+      return await invoke("unregister_global_shortcut", { shortcut });
+    } catch (error) {
+      console.error("注销全局快捷键失败:", error);
+      return false;
+    }
+  },
+
+  // 验证全局快捷键
+  validateGlobalShortcut: async (shortcut: string): Promise<boolean> => {
+    try {
+      return await invoke("validate_global_shortcut", { shortcut });
+    } catch (error) {
+      console.error("验证全局快捷键失败:", error);
       return false;
     }
   },
@@ -262,6 +314,40 @@ export const tauriAPI = {
       await invoke("open_app_config_folder");
     } catch (error) {
       console.error("打开应用配置文件夹失败:", error);
+    }
+  },
+
+  // 选择配置目录
+  selectConfigDirectory: async (
+    defaultPath?: string,
+  ): Promise<string | null> => {
+    try {
+      return await invoke("pick_directory", {
+        default_path: defaultPath,
+      });
+    } catch (error) {
+      console.error("选择配置目录失败:", error);
+      return null;
+    }
+  },
+
+  // 获取配置目录
+  getConfigDir: async (app?: AppType): Promise<string> => {
+    try {
+      return await invoke("get_config_dir", { app_type: app, app });
+    } catch (error) {
+      console.error("获取配置目录失败:", error);
+      return "";
+    }
+  },
+
+  // 判断是否为便携版
+  isPortable: async (): Promise<boolean> => {
+    try {
+      return await invoke("is_portable_mode");
+    } catch (error) {
+      console.error("判断便携版失败:", error);
+      return false;
     }
   },
 

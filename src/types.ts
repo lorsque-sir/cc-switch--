@@ -49,6 +49,10 @@ export interface Settings {
   codexConfigDir?: string;
   // 首选语言（可选，默认中文）
   language?: "en" | "zh";
+  // 开机自启动
+  autoStart: boolean;
+  // 全局快捷键
+  globalShortcut?: string;
 }
 
 // MCP 服务器连接参数（宽松：允许扩展字段）

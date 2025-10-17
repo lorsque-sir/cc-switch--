@@ -1,8 +1,11 @@
 #![allow(non_snake_case)]
 
 use std::collections::HashMap;
-use tauri::State;
+use std::str::FromStr;
+use tauri::{Manager, State};
+use tauri_plugin_autostart::ManagerExt as AutostartManagerExt;
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::app_config::AppType;
@@ -958,9 +961,207 @@ pub async fn get_settings() -> Result<crate::settings::AppSettings, String> {
 
 /// 保存设置
 #[tauri::command]
-pub async fn save_settings(settings: crate::settings::AppSettings) -> Result<bool, String> {
+pub async fn save_settings(
+    app: tauri::AppHandle,
+    settings: crate::settings::AppSettings,
+) -> Result<bool, String> {
+    // 处理开机自启动设置
+    let autostart_manager = app.autolaunch();
+    let is_enabled = autostart_manager
+        .is_enabled()
+        .map_err(|e| format!("检查自启动状态失败: {}", e))?;
+
+    if settings.auto_start && !is_enabled {
+        // 需要启用自启动
+        autostart_manager
+            .enable()
+            .map_err(|e| format!("启用开机自启动失败: {}", e))?;
+        log::info!("已启用开机自启动");
+    } else if !settings.auto_start && is_enabled {
+        // 需要禁用自启动
+        autostart_manager
+            .disable()
+            .map_err(|e| format!("禁用开机自启动失败: {}", e))?;
+        log::info!("已禁用开机自启动");
+    }
+
+    // 处理全局快捷键设置
+    let old_settings = crate::settings::get_settings();
+    let old_shortcut = old_settings.global_shortcut.clone();
+    let new_shortcut = settings.global_shortcut.clone();
+
+    // 如果快捷键发生变化，需要重新注册
+    if old_shortcut != new_shortcut {
+        // 先注销旧的快捷键
+        if let Some(old) = old_shortcut {
+            if !old.is_empty() {
+                if let Ok(shortcut) = Shortcut::from_str(&old) {
+                    let _ = app.global_shortcut().unregister(shortcut);
+                }
+            }
+        }
+
+        // 注册新的快捷键
+        if let Some(new) = &new_shortcut {
+            if !new.is_empty() {
+                let shortcut = Shortcut::from_str(new)
+                    .map_err(|e| format!("快捷键格式无效: {}", e))?;
+                let app_handle = app.clone();
+                if let Err(e) = app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, _event| {
+                    if let Some(window) = app_handle.get_webview_window("main") {
+                        if let Ok(is_visible) = window.is_visible() {
+                            if is_visible {
+                                let _ = window.hide();
+                                #[cfg(target_os = "windows")]
+                                {
+                                    let _ = window.set_skip_taskbar(true);
+                                }
+                            } else {
+                                #[cfg(target_os = "windows")]
+                                {
+                                    let _ = window.set_skip_taskbar(false);
+                                }
+                                let _ = window.unminimize();
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    }
+                }) {
+                    log::error!("注册全局快捷键失败: {}", e);
+                    return Err(format!("注册全局快捷键失败: {}", e));
+                } else {
+                    log::info!("已注册全局快捷键: {}", new);
+                }
+            }
+        }
+    }
+
     crate::settings::update_settings(settings)?;
     Ok(true)
+}
+
+/// 获取开机自启动状态
+#[tauri::command]
+pub async fn get_autostart_status(app: tauri::AppHandle) -> Result<bool, String> {
+    let autostart_manager = app.autolaunch();
+    autostart_manager
+        .is_enabled()
+        .map_err(|e| format!("检查自启动状态失败: {}", e))
+}
+
+/// 设置开机自启动
+#[tauri::command]
+pub async fn set_autostart(app: tauri::AppHandle, enable: bool) -> Result<bool, String> {
+    let autostart_manager = app.autolaunch();
+
+    if enable {
+        autostart_manager
+            .enable()
+            .map_err(|e| format!("启用开机自启动失败: {}", e))?;
+        log::info!("已启用开机自启动");
+    } else {
+        autostart_manager
+            .disable()
+            .map_err(|e| format!("禁用开机自启动失败: {}", e))?;
+        log::info!("已禁用开机自启动");
+    }
+
+    Ok(true)
+}
+
+/// 注册全局快捷键
+#[tauri::command]
+pub async fn register_global_shortcut(
+    app: tauri::AppHandle,
+    shortcut_str: String,
+) -> Result<bool, String> {
+    if shortcut_str.is_empty() {
+        return Err("快捷键不能为空".to_string());
+    }
+
+    let shortcut = Shortcut::from_str(&shortcut_str)
+        .map_err(|e| format!("快捷键格式无效: {}", e))?;
+
+    let app_handle = app.clone();
+    app.global_shortcut()
+        .on_shortcut(shortcut, move |_app, _shortcut, _event| {
+            if let Some(window) = app_handle.get_webview_window("main") {
+                if let Ok(is_visible) = window.is_visible() {
+                    if is_visible {
+                        let _ = window.hide();
+                        #[cfg(target_os = "windows")]
+                        {
+                            let _ = window.set_skip_taskbar(true);
+                        }
+                    } else {
+                        #[cfg(target_os = "windows")]
+                        {
+                            let _ = window.set_skip_taskbar(false);
+                        }
+                        let _ = window.unminimize();
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                }
+            }
+        })
+        .map_err(|e| format!("注册全局快捷键失败: {}", e))?;
+
+    log::info!("已注册全局快捷键: {}", shortcut_str);
+    Ok(true)
+}
+
+/// 注销全局快捷键
+#[tauri::command]
+pub async fn unregister_global_shortcut(
+    app: tauri::AppHandle,
+    shortcut_str: String,
+) -> Result<bool, String> {
+    if shortcut_str.is_empty() {
+        return Ok(true);
+    }
+
+    let shortcut = Shortcut::from_str(&shortcut_str)
+        .map_err(|e| format!("快捷键格式无效: {}", e))?;
+
+    app.global_shortcut()
+        .unregister(shortcut)
+        .map_err(|e| format!("注销全局快捷键失败: {}", e))?;
+
+    log::info!("已注销全局快捷键: {}", shortcut_str);
+    Ok(true)
+}
+
+/// 验证快捷键是否有效
+#[tauri::command]
+pub async fn validate_global_shortcut(
+    app: tauri::AppHandle,
+    shortcut_str: String,
+) -> Result<bool, String> {
+    if shortcut_str.is_empty() {
+        return Ok(true); // 空字符串视为有效（表示不使用快捷键）
+    }
+
+    // 尝试解析快捷键来验证其格式是否正确
+    match Shortcut::from_str(&shortcut_str) {
+        Ok(shortcut) => {
+            // 尝试注册快捷键来验证其是否可用
+            let result = app.global_shortcut().on_shortcut(shortcut.clone(), |_app, _shortcut, _event| {
+                // 空回调，仅用于验证
+            });
+
+            match result {
+                Ok(_) => {
+                    // 验证成功后立即注销
+                    let _ = app.global_shortcut().unregister(shortcut);
+                    Ok(true)
+                }
+                Err(e) => Err(format!("快捷键注册失败: {}", e)),
+            }
+        }
+        Err(e) => Err(format!("快捷键格式无效: {}", e)),
+    }
 }
 
 /// 检查更新

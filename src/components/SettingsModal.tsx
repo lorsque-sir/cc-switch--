@@ -48,6 +48,8 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     claudeConfigDir: undefined,
     codexConfigDir: undefined,
     language: persistedLanguage,
+    autoStart: false,
+    globalShortcut: undefined,
   });
   const [initialLanguage, setInitialLanguage] = useState<"zh" | "en">(
     persistedLanguage,
@@ -111,6 +113,14 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
             ? (loadedSettings as any).codexConfigDir
             : undefined,
         language: storedLanguage,
+        autoStart:
+          typeof (loadedSettings as any)?.autoStart === "boolean"
+            ? (loadedSettings as any).autoStart
+            : false,
+        globalShortcut:
+          typeof (loadedSettings as any)?.globalShortcut === "string"
+            ? (loadedSettings as any).globalShortcut
+            : undefined,
       });
       setInitialLanguage(storedLanguage);
       if (i18n.language !== storedLanguage) {
@@ -432,6 +442,54 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                   className="w-4 h-4 text-blue-500 rounded focus:ring-blue-500/20"
                 />
               </label>
+              <label className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm text-gray-900 dark:text-gray-100">
+                    {t("settings.autoStart")}
+                  </span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {t("settings.autoStartDescription")}
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.autoStart}
+                  onChange={(e) =>
+                    setSettings((prev) => ({
+                      ...prev,
+                      autoStart: e.target.checked,
+                    }))
+                  }
+                  className="w-4 h-4 text-blue-500 rounded focus:ring-blue-500/20"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* 全局快捷键设置 */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+              {t("settings.globalShortcut")}
+            </h3>
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={settings.globalShortcut || ""}
+                onChange={(e) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    globalShortcut: e.target.value || undefined,
+                  }))
+                }
+                placeholder={t("settings.globalShortcutPlaceholder")}
+                className="w-full px-3 py-2 text-sm font-mono bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                {t("settings.globalShortcutDescription")}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                {t("settings.globalShortcutExamples")}
+              </p>
             </div>
           </div>
 

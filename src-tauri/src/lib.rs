@@ -12,6 +12,7 @@ mod speedtest;
 mod store;
 mod vscode;
 
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use store::AppState;
@@ -22,6 +23,7 @@ use tauri::{
 #[cfg(target_os = "macos")]
 use tauri::{ActivationPolicy, RunEvent};
 use tauri::{Emitter, Manager};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
 /// 创建动态托盘菜单
 fn create_tray_menu(
@@ -391,6 +393,39 @@ async fn disable_provider_internal(
     Ok(())
 }
 
+/// 切换主窗口显示/隐藏
+fn toggle_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Ok(is_visible) = window.is_visible() {
+            if is_visible {
+                // 窗口可见，则隐藏
+                let _ = window.hide();
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = window.set_skip_taskbar(true);
+                }
+                #[cfg(target_os = "macos")]
+                {
+                    apply_tray_policy(app, false);
+                }
+            } else {
+                // 窗口隐藏，则显示
+                #[cfg(target_os = "windows")]
+                {
+                    let _ = window.set_skip_taskbar(false);
+                }
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+                #[cfg(target_os = "macos")]
+                {
+                    apply_tray_policy(app, true);
+                }
+            }
+        }
+    }
+}
+
 /// 更新托盘菜单的Tauri命令
 #[tauri::command]
 async fn update_tray_menu(
@@ -447,6 +482,11 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--minimized"]),
+        ))
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             // 注册 Updater 插件（桌面端）
             #[cfg(desktop)]
@@ -589,6 +629,26 @@ pub fn run() {
             let _tray = tray_builder.build(app)?;
             // 将同一个实例注入到全局状态，避免重复创建导致的不一致
             app.manage(app_state);
+
+            // 注册全局快捷键
+            let settings = crate::settings::get_settings();
+            if let Some(shortcut_str) = settings.global_shortcut {
+                if !shortcut_str.is_empty() {
+                    if let Ok(shortcut) = Shortcut::from_str(&shortcut_str) {
+                        let app_handle = app.handle().clone();
+                        if let Err(e) = app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, _event| {
+                            toggle_main_window(&app_handle);
+                        }) {
+                            log::warn!("注册全局快捷键失败: {}", e);
+                        } else {
+                            log::info!("已注册全局快捷键: {}", shortcut_str);
+                        }
+                    } else {
+                        log::warn!("快捷键格式无效: {}", shortcut_str);
+                    }
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -624,6 +684,11 @@ pub fn run() {
             commands::sync_mcp_to_other_app,
             commands::get_settings,
             commands::save_settings,
+            commands::get_autostart_status,
+            commands::set_autostart,
+            commands::register_global_shortcut,
+            commands::unregister_global_shortcut,
+            commands::validate_global_shortcut,
             commands::check_for_updates,
             commands::is_portable_mode,
             commands::get_vscode_settings_status,
