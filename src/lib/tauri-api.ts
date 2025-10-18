@@ -427,7 +427,7 @@ export const tauriAPI = {
         app_type: app,
         app,
         id,
-        server,
+        spec: server,
       });
     } catch (error) {
       console.error("添加/更新 MCP 服务器失败:", error);
