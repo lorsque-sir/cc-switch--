@@ -4,6 +4,7 @@ mod claude_plugin;
 mod codex_config;
 mod commands;
 mod config;
+mod droid_config;
 mod mcp;
 mod migration;
 mod provider;
@@ -17,7 +18,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use store::AppState;
 use tauri::{
-    menu::{CheckMenuItem, Menu, MenuBuilder, MenuItem},
+    menu::{CheckMenuItem, Menu, MenuBuilder, MenuItem, SubmenuBuilder},
     tray::{TrayIconBuilder, TrayIconEvent},
 };
 #[cfg(target_os = "macos")]
@@ -42,111 +43,117 @@ fn create_tray_menu(
         .map_err(|e| format!("创建打开主界面菜单失败: {}", e))?;
     menu_builder = menu_builder.item(&show_main_item).separator();
 
-    // 直接添加所有供应商到主菜单（扁平化结构，更简单可靠）
+    // 使用子菜单组织 3 大类，支持折叠
+    
+    // === Claude 子菜单 ===
     if let Some(claude_manager) = config.get_manager(&crate::app_config::AppType::Claude) {
-        // 添加Claude标题（禁用状态，仅作为分组标识）
-        let claude_header =
-            MenuItem::with_id(app, "claude_header", "─── Claude ───", false, None::<&str>)
-                .map_err(|e| format!("创建Claude标题失败: {}", e))?;
-        menu_builder = menu_builder.item(&claude_header);
+        let mut claude_submenu = SubmenuBuilder::new(app, "Claude");
 
         if !claude_manager.providers.is_empty() {
             for (id, provider) in &claude_manager.providers {
                 let is_current = claude_manager.current == *id;
-                let item = CheckMenuItem::with_id(
-                    app,
-                    format!("claude_{}", id),
-                    &provider.name,
-                    true,
-                    is_current,
-                    None::<&str>,
-                )
-                .map_err(|e| format!("创建菜单项失败: {}", e))?;
-                menu_builder = menu_builder.item(&item);
-            }
+                
+                // 检查是否有多个端点
+                let has_multiple_endpoints = provider.alternative_urls.as_ref()
+                    .map(|urls| urls.len() > 1)
+                    .unwrap_or(false);
 
-            // 如果有当前供应商，添加快速切换地址和停用按钮
-            if !claude_manager.current.is_empty() {
-                // 获取当前供应商
-                if let Some(current_provider) =
-                    claude_manager.providers.get(&claude_manager.current)
-                {
-                    // 如果有多个备选地址，添加快速切换子菜单
-                    if let Some(ref alt_urls) = current_provider.alternative_urls {
-                        if alt_urls.len() > 1 {
-                            // 获取当前使用的URL
-                            let current_url = current_provider
-                                .settings_config
-                                .get("env")
-                                .and_then(|env| env.get("ANTHROPIC_BASE_URL"))
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("");
+                if has_multiple_endpoints {
+                    // 有多个端点：创建供应商子菜单（无论是否激活）
+                    let submenu_name = if is_current {
+                        format!("{} ✓", &provider.name)
+                    } else {
+                        provider.name.clone()
+                    };
+                    
+                    let mut provider_submenu = SubmenuBuilder::new(app, submenu_name);
+                    
+                    // 获取当前使用的URL（只有激活时才有意义）
+                    let current_url = if is_current {
+                        provider
+                            .settings_config
+                            .get("env")
+                            .and_then(|env| env.get("ANTHROPIC_BASE_URL"))
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                    } else {
+                        ""
+                    };
 
-                            // 添加子菜单分隔符
-                            menu_builder = menu_builder.separator();
-
-                            // 添加快速切换地址标题
-                            let url_header = MenuItem::with_id(
+                    // 添加所有端点（所有供应商的端点都可点击，实现一步到位切换）
+                    if let Some(ref alt_urls) = provider.alternative_urls {
+                        for url in alt_urls {
+                            let is_current_url = is_current && url == current_url;
+                            // 编码格式：provider_id + url
+                            let encoded_url = url.replace("://", "___").replace('/', "__");
+                            
+                            // 所有端点都可点击：点击时自动激活供应商并切换端点
+                            let url_item = CheckMenuItem::with_id(
                                 app,
-                                "url_header",
-                                "快速切换地址",
-                                false,
+                                format!("claude_endpoint_{}_{}", id, encoded_url),
+                                url,
+                                true,
+                                is_current_url,
                                 None::<&str>,
                             )
-                            .map_err(|e| format!("创建地址切换标题失败: {}", e))?;
-                            menu_builder = menu_builder.item(&url_header);
-
-                            // 为每个地址创建菜单项
-                            for url in alt_urls {
-                                let is_current = url == current_url;
-                                // URL 编码：先替换 :// 为特殊标记，然后替换 /
-                                let encoded_url = url.replace("://", "___").replace('/', "__");
-                                let item = CheckMenuItem::with_id(
-                                    app,
-                                    format!("switch_url_{}", encoded_url),
-                                    format!("  {}", url),
-                                    true,
-                                    is_current,
-                                    None::<&str>,
-                                )
-                                .map_err(|e| format!("创建地址菜单项失败: {}", e))?;
-                                menu_builder = menu_builder.item(&item);
-                            }
+                            .map_err(|e| format!("创建端点菜单项失败: {}", e))?;
+                            provider_submenu = provider_submenu.item(&url_item);
                         }
                     }
-                }
 
-                menu_builder = menu_builder.separator();
+                    let provider_menu = provider_submenu
+                        .build()
+                        .map_err(|e| format!("构建供应商子菜单失败: {}", e))?;
+                    claude_submenu = claude_submenu.item(&provider_menu);
+                } else {
+                    // 没有多个端点：普通菜单项
+                    let item = CheckMenuItem::with_id(
+                        app,
+                        format!("claude_{}", id),
+                        &provider.name,
+                        true,
+                        is_current,
+                        None::<&str>,
+                    )
+                    .map_err(|e| format!("创建菜单项失败: {}", e))?;
+                    claude_submenu = claude_submenu.item(&item);
+                }
+            }
+
+            // 如果有当前供应商，添加停用按钮
+            if !claude_manager.current.is_empty() {
+                claude_submenu = claude_submenu.separator();
                 let disable_item = MenuItem::with_id(
                     app,
                     "claude_disable",
-                    "  停用当前供应商",
+                    "停用当前供应商",
                     true,
                     None::<&str>,
                 )
                 .map_err(|e| format!("创建停用菜单失败: {}", e))?;
-                menu_builder = menu_builder.item(&disable_item);
+                claude_submenu = claude_submenu.item(&disable_item);
             }
         } else {
-            // 没有供应商时显示提示
             let empty_hint = MenuItem::with_id(
                 app,
                 "claude_empty",
-                "  (无供应商，请在主界面添加)",
+                "(无供应商)",
                 false,
                 None::<&str>,
             )
             .map_err(|e| format!("创建Claude空提示失败: {}", e))?;
-            menu_builder = menu_builder.item(&empty_hint);
+            claude_submenu = claude_submenu.item(&empty_hint);
         }
+
+        let claude_menu = claude_submenu
+            .build()
+            .map_err(|e| format!("构建Claude子菜单失败: {}", e))?;
+        menu_builder = menu_builder.item(&claude_menu);
     }
 
+    // === Codex 子菜单 ===
     if let Some(codex_manager) = config.get_manager(&crate::app_config::AppType::Codex) {
-        // 添加Codex标题（禁用状态，仅作为分组标识）
-        let codex_header =
-            MenuItem::with_id(app, "codex_header", "─── Codex ───", false, None::<&str>)
-                .map_err(|e| format!("创建Codex标题失败: {}", e))?;
-        menu_builder = menu_builder.item(&codex_header);
+        let mut codex_submenu = SubmenuBuilder::new(app, "Codex");
 
         if !codex_manager.providers.is_empty() {
             for (id, provider) in &codex_manager.providers {
@@ -160,20 +167,74 @@ fn create_tray_menu(
                     None::<&str>,
                 )
                 .map_err(|e| format!("创建菜单项失败: {}", e))?;
-                menu_builder = menu_builder.item(&item);
+                codex_submenu = codex_submenu.item(&item);
             }
         } else {
-            // 没有供应商时显示提示
             let empty_hint = MenuItem::with_id(
                 app,
                 "codex_empty",
-                "  (无供应商，请在主界面添加)",
+                "(无供应商)",
                 false,
                 None::<&str>,
             )
             .map_err(|e| format!("创建Codex空提示失败: {}", e))?;
-            menu_builder = menu_builder.item(&empty_hint);
+            codex_submenu = codex_submenu.item(&empty_hint);
         }
+
+        let codex_menu = codex_submenu
+            .build()
+            .map_err(|e| format!("构建Codex子菜单失败: {}", e))?;
+        menu_builder = menu_builder.item(&codex_menu);
+    }
+
+    // === Droid 子菜单 ===
+    if let Some(droid_manager) = config.get_manager(&crate::app_config::AppType::Droid) {
+        let mut droid_submenu = SubmenuBuilder::new(app, "Droid");
+
+        if !droid_manager.providers.is_empty() {
+            for (id, provider) in &droid_manager.providers {
+                let is_current = droid_manager.current == *id;
+                let item = CheckMenuItem::with_id(
+                    app,
+                    format!("droid_{}", id),
+                    &provider.name,
+                    true,
+                    is_current,
+                    None::<&str>,
+                )
+                .map_err(|e| format!("创建菜单项失败: {}", e))?;
+                droid_submenu = droid_submenu.item(&item);
+            }
+
+            // 如果有当前供应商，添加停用按钮
+            if !droid_manager.current.is_empty() {
+                droid_submenu = droid_submenu.separator();
+                let disable_item = MenuItem::with_id(
+                    app,
+                    "droid_disable",
+                    "停用当前供应商",
+                    true,
+                    None::<&str>,
+                )
+                .map_err(|e| format!("创建停用菜单失败: {}", e))?;
+                droid_submenu = droid_submenu.item(&disable_item);
+            }
+        } else {
+            let empty_hint = MenuItem::with_id(
+                app,
+                "droid_empty",
+                "(无供应商)",
+                false,
+                None::<&str>,
+            )
+            .map_err(|e| format!("创建Droid空提示失败: {}", e))?;
+            droid_submenu = droid_submenu.item(&empty_hint);
+        }
+
+        let droid_menu = droid_submenu
+            .build()
+            .map_err(|e| format!("构建Droid子菜单失败: {}", e))?;
+        menu_builder = menu_builder.item(&droid_menu);
     }
 
     // 分隔符和退出菜单
@@ -260,6 +321,19 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
                 }
             });
         }
+        "droid_disable" => {
+            log::info!("停用Droid供应商");
+
+            // 执行停用
+            let app_handle = app.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) =
+                    disable_provider_internal(&app_handle, crate::app_config::AppType::Droid).await
+                {
+                    log::error!("停用Droid供应商失败: {}", e);
+                }
+            });
+        }
         id if id.starts_with("codex_") => {
             let provider_id = id.strip_prefix("codex_").unwrap();
             log::info!("切换到Codex供应商: {}", provider_id);
@@ -279,14 +353,125 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
                 }
             });
         }
+        id if id.starts_with("droid_") => {
+            let provider_id = id.strip_prefix("droid_").unwrap();
+            log::info!("切换到Droid供应商: {}", provider_id);
+
+            // 执行切换
+            let app_handle = app.clone();
+            let provider_id = provider_id.to_string();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = switch_provider_internal(
+                    &app_handle,
+                    crate::app_config::AppType::Droid,
+                    provider_id,
+                )
+                .await
+                {
+                    log::error!("切换Droid供应商失败: {}", e);
+                }
+            });
+        }
+        id if id.starts_with("claude_endpoint_") => {
+            // 格式: claude_endpoint_{provider_id}_{encoded_url}
+            let parts = id.strip_prefix("claude_endpoint_").unwrap();
+            if let Some(last_underscore) = parts.rfind('_') {
+                let provider_id = &parts[..last_underscore];
+                let url_encoded = &parts[last_underscore + 1..];
+                let url = url_encoded.replace("___", "://").replace("__", "/");
+                
+                log::info!("一步切换：供应商 {} → 端点 {}", provider_id, url);
+
+                let app_handle = app.clone();
+                let provider_id = provider_id.to_string();
+                let url = url.to_string();
+                
+                tauri::async_runtime::spawn(async move {
+                    if let Some(app_state) = app_handle.try_state::<AppState>() {
+                        // 步骤 1: 切换到该供应商
+                        if let Err(e) = switch_provider_internal(
+                            &app_handle,
+                            crate::app_config::AppType::Claude,
+                            provider_id.clone(),
+                        ).await {
+                            log::error!("切换供应商失败: {}", e);
+                            return;
+                        }
+
+                        // 步骤 2: 切换端点
+                        match commands::switch_provider_url(app_state, url.clone()).await {
+                            Ok(_) => {
+                                log::info!("成功切换到端点: {}", url);
+                                // 更新托盘菜单
+                                if let Some(app_state) = app_handle.try_state::<AppState>() {
+                                    if let Ok(new_menu) = create_tray_menu(&app_handle, app_state.inner()) {
+                                        if let Some(tray) = app_handle.tray_by_id("main") {
+                                            let _ = tray.set_menu(Some(new_menu));
+                                        }
+                                    }
+                                }
+                            }
+                            Err(e) => log::error!("切换端点失败: {}", e),
+                        }
+                    }
+                });
+            }
+        }
+        id if id.starts_with("claude_endpoint_") => {
+            // 格式: claude_endpoint_{provider_id}_{encoded_url}
+            // 找到最后一个下划线，分离 provider_id 和 url
+            let parts = id.strip_prefix("claude_endpoint_").unwrap();
+            
+            // 使用 rfind 找到最后一个下划线的位置
+            if let Some(last_underscore) = parts.rfind("___") {
+                // URL 中包含 ___ (://), 从这里分割
+                let provider_id = &parts[..last_underscore];
+                let url_with_protocol = &parts[last_underscore..];
+                let url = url_with_protocol.replace("___", "://").replace("__", "/");
+                
+                log::info!("一步切换：供应商 {} → 端点 {}", provider_id, url);
+
+                let app_handle = app.clone();
+                let provider_id = provider_id.to_string();
+                let url = url.to_string();
+                
+                tauri::async_runtime::spawn(async move {
+                    // 步骤 1: 切换到该供应商
+                    if let Err(e) = switch_provider_internal(
+                        &app_handle,
+                        crate::app_config::AppType::Claude,
+                        provider_id.clone(),
+                    ).await {
+                        log::error!("切换供应商失败: {}", e);
+                        return;
+                    }
+
+                    // 步骤 2: 切换端点
+                    if let Some(app_state) = app_handle.try_state::<AppState>() {
+                        match commands::switch_provider_url(app_state, url.clone()).await {
+                            Ok(_) => {
+                                log::info!("✅ 成功一步切换到端点: {}", url);
+                                // 更新托盘菜单
+                                if let Some(app_state) = app_handle.try_state::<AppState>() {
+                                    if let Ok(new_menu) = create_tray_menu(&app_handle, app_state.inner()) {
+                                        if let Some(tray) = app_handle.tray_by_id("main") {
+                                            let _ = tray.set_menu(Some(new_menu));
+                                        }
+                                    }
+                                }
+                            }
+                            Err(e) => log::error!("切换端点失败: {}", e),
+                        }
+                    }
+                });
+            }
+        }
         id if id.starts_with("switch_url_") => {
-            // 解析URL (从菜单ID恢复URL)
+            // 兼容旧格式（如果还有用到）
             let url_encoded = id.strip_prefix("switch_url_").unwrap();
-            // URL 解码：先恢复 ://，然后恢复 /
             let url = url_encoded.replace("___", "://").replace("__", "/");
             log::info!("切换API地址到: {}", url);
 
-            // 执行地址切换
             let app_handle = app.clone();
             let url = url.to_string();
             tauri::async_runtime::spawn(async move {
@@ -294,22 +479,15 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
                     match commands::switch_provider_url(app_state, url.clone()).await {
                         Ok(_) => {
                             log::info!("成功切换API地址到: {}", url);
-                            // 切换后更新托盘菜单（重新获取 app_state）
                             if let Some(app_state) = app_handle.try_state::<AppState>() {
-                                if let Ok(new_menu) =
-                                    create_tray_menu(&app_handle, app_state.inner())
-                                {
+                                if let Ok(new_menu) = create_tray_menu(&app_handle, app_state.inner()) {
                                     if let Some(tray) = app_handle.tray_by_id("main") {
-                                        if let Err(e) = tray.set_menu(Some(new_menu)) {
-                                            log::error!("更新托盘菜单失败: {}", e);
-                                        }
+                                        let _ = tray.set_menu(Some(new_menu));
                                     }
                                 }
                             }
                         }
-                        Err(e) => {
-                            log::error!("切换API地址失败: {}", e);
-                        }
+                        Err(e) => log::error!("切换API地址失败: {}", e),
                     }
                 }
             });
@@ -731,6 +909,9 @@ pub fn run() {
             commands::apply_claude_plugin_config,
             commands::is_claude_plugin_applied,
             commands::test_endpoints,
+            commands::check_droid_balance,
+            commands::batch_check_droid_balances,
+            commands::get_factory_api_key_env,
             update_tray_menu,
         ]);
 

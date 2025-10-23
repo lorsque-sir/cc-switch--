@@ -308,6 +308,9 @@ pub fn set_enabled_and_sync_for(
             // 将启用项投影到 ~/.codex/config.toml
             sync_enabled_to_codex(config)?;
         }
+        AppType::Droid => {
+            // Droid 暂不支持 MCP 同步
+        }
     }
     Ok(true)
 }
@@ -744,6 +747,7 @@ pub fn check_mcp_exists_in_other_app(
     let target_app = match source_app {
         AppType::Claude => AppType::Codex,
         AppType::Codex => AppType::Claude,
+        AppType::Droid => AppType::Claude, // Droid 默认同步到 Claude
     };
 
     config.mcp_for(&target_app).servers.contains_key(id)
@@ -779,6 +783,7 @@ pub fn copy_mcp_to_other_app(
     let target_app = match source_app {
         AppType::Claude => AppType::Codex,
         AppType::Codex => AppType::Claude,
+        AppType::Droid => AppType::Claude, // Droid 默认同步到 Claude
     };
 
     // 3. 检查目标应用是否已存在同名配置

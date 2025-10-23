@@ -19,6 +19,8 @@ pub struct McpRoot {
     pub claude: McpConfig,
     #[serde(default)]
     pub codex: McpConfig,
+    #[serde(default)]
+    pub droid: McpConfig,
 }
 
 /// 应用类型
@@ -27,6 +29,7 @@ pub struct McpRoot {
 pub enum AppType {
     Claude,
     Codex,
+    Droid,
 }
 
 impl AppType {
@@ -34,6 +37,7 @@ impl AppType {
         match self {
             AppType::Claude => "claude",
             AppType::Codex => "codex",
+            AppType::Droid => "droid",
         }
     }
 }
@@ -42,6 +46,7 @@ impl From<&str> for AppType {
     fn from(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "codex" => AppType::Codex,
+            "droid" => AppType::Droid,
             _ => AppType::Claude, // 默认为 Claude
         }
     }
@@ -68,6 +73,7 @@ impl Default for MultiAppConfig {
         let mut apps = HashMap::new();
         apps.insert("claude".to_string(), ProviderManager::default());
         apps.insert("codex".to_string(), ProviderManager::default());
+        apps.insert("droid".to_string(), ProviderManager::default());
 
         Self {
             version: 2,
@@ -99,6 +105,7 @@ impl MultiAppConfig {
             let mut apps = HashMap::new();
             apps.insert("claude".to_string(), v1_config);
             apps.insert("codex".to_string(), ProviderManager::default());
+            apps.insert("droid".to_string(), ProviderManager::default());
 
             let config = Self {
                 version: 2,
@@ -129,7 +136,14 @@ impl MultiAppConfig {
         }
 
         // 尝试读取v2格式
-        serde_json::from_str::<Self>(&content).map_err(|e| format!("解析配置文件失败: {}", e))
+        let mut config = serde_json::from_str::<Self>(&content).map_err(|e| format!("解析配置文件失败: {}", e))?;
+        
+        // 确保所有应用类型都存在（向后兼容）
+        config.ensure_app(&AppType::Claude);
+        config.ensure_app(&AppType::Codex);
+        config.ensure_app(&AppType::Droid);
+        
+        Ok(config)
     }
 
     /// 保存配置到文件
@@ -170,6 +184,7 @@ impl MultiAppConfig {
         match app {
             AppType::Claude => &self.mcp.claude,
             AppType::Codex => &self.mcp.codex,
+            AppType::Droid => &self.mcp.droid,
         }
     }
 
@@ -178,6 +193,7 @@ impl MultiAppConfig {
         match app {
             AppType::Claude => &mut self.mcp.claude,
             AppType::Codex => &mut self.mcp.codex,
+            AppType::Droid => &mut self.mcp.droid,
         }
     }
 }

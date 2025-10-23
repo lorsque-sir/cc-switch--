@@ -43,6 +43,19 @@ fn validate_provider_settings(app_type: &AppType, provider: &Provider) -> Result
                 }
             }
         }
+        AppType::Droid => {
+            let settings = provider
+                .settings_config
+                .as_object()
+                .ok_or_else(|| "Droid 配置必须是 JSON 对象".to_string())?;
+            let api_key = settings
+                .get("apiKey")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| "Droid 配置缺少 apiKey 字段".to_string())?;
+            if !api_key.starts_with("fk-") {
+                return Err("Droid API Key 格式错误，应以 fk- 开头".to_string());
+            }
+        }
     }
     Ok(())
 }
@@ -170,6 +183,15 @@ pub async fn add_provider(
                     .and_then(|v| v.as_str());
                 crate::codex_config::write_codex_live_atomic(auth, cfg_text)?;
             }
+            AppType::Droid => {
+                // Droid: 设置环境变量
+                let api_key = provider
+                    .settings_config
+                    .get("apiKey")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| "Droid 配置缺少 apiKey 字段".to_string())?;
+                crate::droid_config::set_factory_api_key_env(api_key)?;
+            }
         }
     }
 
@@ -270,6 +292,15 @@ pub async fn update_provider(
                     .and_then(|v| v.as_str());
                 crate::codex_config::write_codex_live_atomic(auth, cfg_text)?;
             }
+            AppType::Droid => {
+                // Droid: 设置环境变量
+                let api_key = provider
+                    .settings_config
+                    .get("apiKey")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| "Droid 配置缺少 apiKey 字段".to_string())?;
+                crate::droid_config::set_factory_api_key_env(api_key)?;
+            }
         }
     }
 
@@ -338,6 +369,9 @@ pub async fn delete_provider(
             let by_id = get_provider_config_path(&id, None);
             delete_file(&by_name)?;
             delete_file(&by_id)?;
+        }
+        AppType::Droid => {
+            // Droid 配置存储在主配置文件中，不需要删除额外文件
         }
     }
 
@@ -487,6 +521,16 @@ pub async fn switch_provider(
             // 写入合并后的配置
             write_json_file(&settings_path, &final_config)?;
         }
+        AppType::Droid => {
+            // Droid: 设置系统环境变量
+            let api_key = provider
+                .settings_config
+                .get("apiKey")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| "目标供应商缺少 apiKey 配置".to_string())?;
+            
+            crate::droid_config::set_factory_api_key_env(api_key)?;
+        }
     }
 
     // 更新当前供应商
@@ -514,9 +558,9 @@ pub async fn disable_current_provider(
         .or_else(|| appType.as_deref().map(|s| s.into()))
         .unwrap_or(AppType::Claude);
 
-    // 仅支持 Claude（Codex 需要 auth.json 必须有内容）
-    if app_type != AppType::Claude {
-        return Err("停用功能仅支持 Claude Code".to_string());
+    // 仅支持 Claude 和 Droid（Codex 需要 auth.json 必须有内容）
+    if app_type != AppType::Claude && app_type != AppType::Droid {
+        return Err("停用功能仅支持 Claude Code 和 Droid".to_string());
     }
 
     let mut config = state
@@ -528,31 +572,41 @@ pub async fn disable_current_provider(
         .get_manager_mut(&app_type)
         .ok_or_else(|| format!("应用类型不存在: {:?}", app_type))?;
 
-    use crate::config::{read_json_file, write_json_file};
-    let settings_path = get_claude_settings_path();
+    match app_type {
+        AppType::Claude => {
+            use crate::config::{read_json_file, write_json_file};
+            let settings_path = get_claude_settings_path();
 
-    // 读取现有配置
-    let mut final_config = if settings_path.exists() {
-        read_json_file::<serde_json::Value>(&settings_path).unwrap_or(serde_json::json!({}))
-    } else {
-        serde_json::json!({})
-    };
+            // 读取现有配置
+            let mut final_config = if settings_path.exists() {
+                read_json_file::<serde_json::Value>(&settings_path).unwrap_or(serde_json::json!({}))
+            } else {
+                serde_json::json!({})
+            };
 
-    // 清空 env 字段（设置为空对象）
-    if let Some(config_obj) = final_config.as_object_mut() {
-        config_obj.insert("env".to_string(), serde_json::json!({}));
+            // 清空 env 字段（设置为空对象）
+            if let Some(config_obj) = final_config.as_object_mut() {
+                config_obj.insert("env".to_string(), serde_json::json!({}));
+            }
+
+            // 写入配置
+            if let Some(parent) = settings_path.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {}", e))?;
+            }
+            write_json_file(&settings_path, &final_config)?;
+
+            log::info!("已停用 Claude 供应商，env 字段已清空");
+        }
+        AppType::Droid => {
+            // 清除系统环境变量
+            crate::droid_config::clear_factory_api_key_env()?;
+            log::info!("已停用 Droid 供应商，环境变量已清除");
+        }
+        _ => {}
     }
-
-    // 写入配置
-    if let Some(parent) = settings_path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {}", e))?;
-    }
-    write_json_file(&settings_path, &final_config)?;
 
     // 清空当前供应商
     manager.current = String::new();
-
-    log::info!("已停用 Claude 供应商，env 字段已清空");
 
     // 保存配置
     drop(config); // 释放锁
@@ -696,6 +750,9 @@ pub async fn import_default_config(
                 .unwrap_or(serde_json::json!({}));
             serde_json::json!({ "env": env })
         }
+        AppType::Droid => {
+            return Err("Droid 不支持自动导入默认配置，请手动添加 API Key".to_string());
+        }
     };
 
     // 创建默认供应商（仅首次初始化）
@@ -755,6 +812,16 @@ pub async fn get_config_status(
             // 放宽：只要 auth.json 存在即可认为已配置；config.toml 允许为空
             let exists = auth_path.exists();
             let path = get_codex_config_dir().to_string_lossy().to_string();
+
+            Ok(ConfigStatus { exists, path })
+        }
+        AppType::Droid => {
+            use crate::droid_config::get_droid_config_dir;
+            let config_dir = get_droid_config_dir();
+            
+            // Droid 配置目录存在即认为已配置
+            let exists = config_dir.exists();
+            let path = config_dir.to_string_lossy().to_string();
 
             Ok(ConfigStatus { exists, path })
         }
@@ -832,6 +899,10 @@ pub async fn sync_current_provider_config(
             // Codex 的同步逻辑（如果需要的话）
             Ok(true)
         }
+        AppType::Droid => {
+            // Droid 不需要同步逻辑，配置存储在主配置文件中
+            Ok(true)
+        }
     }
 }
 
@@ -850,6 +921,7 @@ pub async fn get_config_dir(
     let dir = match app {
         AppType::Claude => config::get_claude_config_dir(),
         AppType::Codex => codex_config::get_codex_config_dir(),
+        AppType::Droid => crate::droid_config::get_droid_config_dir(),
     };
 
     Ok(dir.to_string_lossy().to_string())
@@ -872,6 +944,7 @@ pub async fn open_config_folder(
     let config_dir = match app_type {
         AppType::Claude => crate::config::get_claude_config_dir(),
         AppType::Codex => crate::codex_config::get_codex_config_dir(),
+        AppType::Droid => crate::droid_config::get_droid_config_dir(),
     };
 
     // 确保目录存在
@@ -1308,6 +1381,9 @@ pub async fn upsert_mcp_server_in_config(
             crate::app_config::AppType::Codex => {
                 crate::mcp::sync_enabled_to_codex(&cfg)?;
             }
+            crate::app_config::AppType::Droid => {
+                // Droid 暂不支持 MCP 同步
+            }
         }
         log::info!("已自动同步已启用的 MCP '{}' 到 live 配置", id);
     }
@@ -1340,6 +1416,9 @@ pub async fn delete_mcp_server_in_config(
     match app_ty {
         crate::app_config::AppType::Claude => crate::mcp::sync_enabled_to_claude(&cfg2)?,
         crate::app_config::AppType::Codex => crate::mcp::sync_enabled_to_codex(&cfg2)?,
+        crate::app_config::AppType::Droid => {
+            // Droid 暂不支持 MCP 同步
+        }
     }
     Ok(existed)
 }
@@ -1479,4 +1558,30 @@ pub async fn test_endpoints(
   timeout_secs: Option<u64>,
 ) -> Result<Vec<crate::speedtest::EndpointLatency>, String> {
   crate::speedtest::test_endpoints(urls, timeout_secs).await
+}
+
+// =====================
+// Droid 余额查询命令
+// =====================
+
+/// 查询单个 Droid API Key 的余额
+#[tauri::command]
+pub async fn check_droid_balance(
+    apiKey: String,
+) -> Result<crate::droid_config::BalanceInfo, String> {
+    crate::droid_config::check_balance(&apiKey).await
+}
+
+/// 批量查询 Droid API Keys 的余额
+#[tauri::command]
+pub async fn batch_check_droid_balances(
+    apiKeys: Vec<String>,
+) -> Result<std::collections::HashMap<String, crate::droid_config::BalanceInfo>, String> {
+    crate::droid_config::batch_check_balances(apiKeys).await
+}
+
+/// 获取当前系统环境变量 Factory_API_Key 的值
+#[tauri::command]
+pub async fn get_factory_api_key_env() -> Result<Option<String>, String> {
+    crate::droid_config::get_factory_api_key_env()
 }

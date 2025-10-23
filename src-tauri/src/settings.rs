@@ -16,6 +16,8 @@ pub struct AppSettings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub codex_config_dir: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub droid_config_dir: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
     #[serde(default)]
     pub auto_start: bool,
@@ -38,6 +40,7 @@ impl Default for AppSettings {
             minimize_to_tray_on_close: true,
             claude_config_dir: None,
             codex_config_dir: None,
+            droid_config_dir: None,
             language: None,
             auto_start: false,
             global_shortcut: None,
@@ -60,6 +63,13 @@ impl AppSettings {
 
         self.codex_config_dir = self
             .codex_config_dir
+            .as_ref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string());
+
+        self.droid_config_dir = self
+            .droid_config_dir
             .as_ref()
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
@@ -166,6 +176,14 @@ pub fn get_codex_override_dir() -> Option<PathBuf> {
     let settings = settings_store().read().ok()?;
     settings
         .codex_config_dir
+        .as_ref()
+        .map(|p| resolve_override_path(p))
+}
+
+pub fn get_droid_override_dir() -> Option<PathBuf> {
+    let settings = settings_store().read().ok()?;
+    settings
+        .droid_config_dir
         .as_ref()
         .map(|p| resolve_override_path(p))
 }
