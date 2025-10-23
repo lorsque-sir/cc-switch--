@@ -47,6 +47,8 @@ export interface Settings {
   claudeConfigDir?: string;
   // 覆盖 Codex 配置目录（可选）
   codexConfigDir?: string;
+  // 覆盖 Droid 配置目录（可选）
+  droidConfigDir?: string;
   // 首选语言（可选，默认中文）
   language?: "en" | "zh";
   // 开机自启动

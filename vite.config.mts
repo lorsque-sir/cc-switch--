@@ -11,7 +11,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    port: 3000,
+    port: 1420,
     strictPort: true,
   },
   clearScreen: false,

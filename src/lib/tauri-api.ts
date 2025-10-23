@@ -3,7 +3,7 @@ import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { Provider, Settings, McpConfigResponse, McpServer } from "../types";
 
 // 应用类型
-export type AppType = "claude" | "codex";
+export type AppType = "claude" | "codex" | "droid";
 
 // 定义配置状态类型
 interface ConfigStatus {
@@ -24,6 +24,17 @@ export interface EndpointLatency {
   latency: number | null;
   status: number | null;
   error: string | null;
+}
+
+// Droid 余额信息类型
+export interface BalanceInfo {
+  used: number;
+  allowance: number;
+  remaining: number;
+  overage: number;
+  usedRatio: number;
+  percentUsed: number;
+  exceeded: boolean;
 }
 
 // Tauri API 封装，提供统一的全局 API 接口
@@ -550,6 +561,43 @@ export const tauriAPI = {
     } catch (error) {
       console.error("测试端点速度失败:", error);
       throw error;
+    }
+  },
+
+  // ========== Droid 余额查询 API ==========
+
+  // 查询单个密钥余额
+  checkDroidBalance: async (apiKey: string): Promise<BalanceInfo> => {
+    try {
+      console.log("[API] 调用 check_droid_balance，API Key:", apiKey?.substring(0, 10) + "...");
+      const result = await invoke("check_droid_balance", { apiKey: apiKey });
+      console.log("[API] check_droid_balance 返回:", result);
+      return result;
+    } catch (error) {
+      console.error("[API] 查询 Droid 余额失败:", error);
+      throw error;
+    }
+  },
+
+  // 批量查询余额
+  batchCheckDroidBalances: async (
+    apiKeys: string[],
+  ): Promise<Record<string, BalanceInfo>> => {
+    try {
+      return await invoke("batch_check_droid_balances", { apiKeys: apiKeys });
+    } catch (error) {
+      console.error("批量查询 Droid 余额失败:", error);
+      throw error;
+    }
+  },
+
+  // 获取当前环境变量值
+  getFactoryApiKeyEnv: async (): Promise<string | null> => {
+    try {
+      return await invoke("get_factory_api_key_env");
+    } catch (error) {
+      console.error("获取环境变量失败:", error);
+      return null;
     }
   },
 };

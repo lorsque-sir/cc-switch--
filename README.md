@@ -1,10 +1,12 @@
-# Claude Code & Codex 供应商切换器
+# CC Switch - AI 供应商切换器
 
-[![Version](https://img.shields.io/badge/version-3.4.0-blue.svg)](https://github.com/farion1231/cc-switch/releases)
+[![Version](https://img.shields.io/badge/version-3.5.3-blue.svg)](https://github.com/farion1231/cc-switch/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/farion1231/cc-switch/releases)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-orange.svg)](https://tauri.app/)
 
-一个用于管理和切换 Claude Code 与 Codex 不同供应商配置的桌面应用。
+一个用于管理和切换 Claude Code、Codex 和 Droid (Factory AI) 不同供应商配置的桌面应用。
+
+> v3.5.3 ：新增 **Droid** 应用类型，支持 Factory API Key 批量导入、实时余额查询、系统环境变量管理；优化托盘菜单为可折叠子菜单结构，支持一步到位切换供应商和端点。
 
 > v3.4.0 ：新增 i18next 国际化（还有部分未完成）、对新模型（qwen-3-max, GLM-4.6, DeepSeek-V3.2-Exp）的支持、Claude 插件、单实例守护、托盘最小化及安装器优化等。
 
@@ -16,14 +18,26 @@
 
 > v3.0.0 重大更新：从 Electron 完全迁移到 Tauri 2.0，应用体积显著降低、启动性能大幅提升。
 
-## 功能特性（v3.4.0）
+## 功能特性（v3.5.3）
 
-- **国际化与语言切换**：内置 i18next，默认显示中文，可在设置中快速切换到英文，界面文文案自动实时刷新。
-- **Claude 插件同步**：在 VS Code 同步按钮旁新增 Claude 插件同步选项，与 Codex 同步互不冲突，切换供应商后立即应用。
-- **供应商预设扩展**：新增 DeepSeek--V3.2-Exp、Qwen3-Max、GLM-4.6 等最新模型。
-- **系统托盘与窗口行为**：窗口关闭可最小化到托盘，macOS 支持托盘模式下隐藏/显示 Dock，托盘切换时同步 Claude/Codex/插件状态。
-- **单实例**：保证同一时间仅运行一个实例，避免多开冲突。
-- **UI 与安装体验优化**：设置面板改为可滚动布局并加入保存图标，按钮宽度与状态一致性加强，Windows MSI 安装默认写入 per-user LocalAppData 并改进组件跟踪，Windows 便携版现在指向最新 release 页面，不再自动更为为安装版。
+### 🆕 Droid (Factory AI) 支持
+- **批量导入**：一次性添加多个 Factory API Keys，支持换行/逗号/分号分隔
+- **余额查询**：实时查询 API Key 余额，可视化进度条显示使用情况
+- **环境变量管理**：自动设置系统环境变量 `Factory_API_Key`（Windows 注册表 / Unix Shell）
+- **快速切换**：主界面或托盘菜单一键切换不同的 API Keys
+- **余额可视化**：彩色进度条（绿/黄/橙/红），超额警告，M 单位格式化
+
+### 🔧 系统托盘优化
+- **折叠子菜单**：Claude、Codex、Droid 独立子菜单，支持折叠
+- **一步切换**：多端点供应商直接点击端点，自动激活供应商并切换端点
+- **智能显示**：有多个端点的供应商自动显示为子菜单
+
+### 🎨 之前版本功能
+- **国际化与语言切换**：内置 i18next，默认显示中文，可在设置中快速切换到英文
+- **Claude 插件同步**：在 VS Code 同步按钮旁新增 Claude 插件同步选项
+- **供应商预设扩展**：支持 DeepSeek-V3.2-Exp、Qwen3-Max、GLM-4.6 等最新模型
+- **系统托盘与窗口行为**：窗口关闭可最小化到托盘，macOS 支持 Dock 显示管理
+- **单实例**：保证同一时间仅运行一个实例，避免多开冲突
 
 ## 界面预览
 

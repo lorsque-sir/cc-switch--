@@ -21,6 +21,7 @@ import PresetSelector from "./ProviderForm/PresetSelector";
 import ApiKeyInput from "./ProviderForm/ApiKeyInput";
 import ClaudeConfigEditor from "./ProviderForm/ClaudeConfigEditor";
 import CodexConfigEditor from "./ProviderForm/CodexConfigEditor";
+import { DroidConfigEditor } from "./ProviderForm/DroidConfigEditor";
 import KimiModelSelector from "./ProviderForm/KimiModelSelector";
 import BaseUrlSelector from "./ProviderForm/BaseUrlSelector";
 import { X, AlertCircle, Save } from "lucide-react";
@@ -58,16 +59,19 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
 }) => {
   // 对于 Codex，需要分离 auth 和 config
   const isCodex = appType === "codex";
+  const isDroid = appType === "droid";
 
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
     websiteUrl: initialData?.websiteUrl || "",
     settingsConfig: initialData
       ? JSON.stringify(initialData.settingsConfig, null, 2)
-      : "",
+      : appType === "droid"
+        ? JSON.stringify({ apiKey: "" }, null, 2)
+        : "",
   });
   const [category, setCategory] = useState<ProviderCategory | undefined>(
-    initialData?.category,
+    initialData?.category || (isDroid ? "official" : undefined),
   );
 
   // Claude 模型配置状态
@@ -369,7 +373,33 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
 
     let settingsConfig: Record<string, any>;
 
-    if (isCodex) {
+    if (isDroid) {
+      // Droid: 验证 API Key
+      console.log("[Droid] 表单数据:", formData);
+      try {
+        settingsConfig = JSON.parse(formData.settingsConfig || "{}");
+        console.log("[Droid] 解析后的配置:", settingsConfig);
+      } catch (err) {
+        console.error("[Droid] 配置解析错误:", err);
+        setError("配置格式错误");
+        return;
+      }
+
+      const apiKey = settingsConfig.apiKey;
+      console.log("[Droid] API Key:", apiKey);
+      
+      if (!apiKey || typeof apiKey !== "string" || !apiKey.trim()) {
+        setError("请填写 Factory API Key");
+        return;
+      }
+
+      if (!apiKey.startsWith("fk-")) {
+        setError("API Key 格式错误，应以 fk- 开头");
+        return;
+      }
+
+      console.log("[Droid] 验证通过，准备提交");
+    } else if (isCodex) {
       const currentAuthError = validateCodexAuth(codexAuth);
       setCodexAuthError(currentAuthError);
       if (currentAuthError) {
@@ -410,6 +440,7 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
         return;
       }
     } else {
+      // Claude: 原有逻辑
       const currentSettingsError = validateSettingsConfig(
         formData.settingsConfig,
       );
@@ -418,7 +449,7 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
         setError(currentSettingsError);
         return;
       }
-      // Claude: 原有逻辑
+      
       if (!formData.settingsConfig.trim()) {
         setError("请填写配置内容");
         return;
@@ -436,6 +467,7 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
     let finalAlternativeUrls = [...alternativeUrls];
     if (
       !isCodex &&
+      !isDroid &&
       baseUrl &&
       baseUrl.trim() &&
       (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) &&
@@ -444,17 +476,20 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
       finalAlternativeUrls = [baseUrl, ...finalAlternativeUrls];
     }
 
-    onSubmit({
+    const submitData = {
       name: formData.name,
       websiteUrl: formData.websiteUrl,
       settingsConfig,
       // 仅在用户选择了预设或手动选择"自定义"时持久化分类
       ...(category ? { category } : {}),
       // 保存备选地址列表（仅 Claude 且有地址时添加）
-      ...(!isCodex && finalAlternativeUrls.length > 0
+      ...(!isCodex && !isDroid && finalAlternativeUrls.length > 0
         ? { alternativeUrls: finalAlternativeUrls }
         : {}),
-    });
+    };
+
+    console.log(`[${appType}] 提交数据:`, submitData);
+    onSubmit(submitData);
   };
 
   const handleChange = (
@@ -1116,7 +1151,7 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
               </div>
             )}
 
-            {showPresets && !isCodex && (
+            {showPresets && !isCodex && !isDroid && (
               <PresetSelector
                 presets={providerPresets}
                 selectedIndex={selectedPreset}
@@ -1170,26 +1205,28 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
               />
             </div>
 
-            <div className="space-y-2">
-              <label
-                htmlFor="websiteUrl"
-                className="block text-sm font-medium text-gray-900 dark:text-gray-100"
-              >
-                官网地址
-              </label>
-              <input
-                type="url"
-                id="websiteUrl"
-                name="websiteUrl"
-                value={formData.websiteUrl}
-                onChange={handleChange}
-                placeholder="https://example.com（可选）"
-                autoComplete="off"
-                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:border-blue-500 dark:focus:border-blue-400 transition-colors"
-              />
-            </div>
+            {!isDroid && (
+              <div className="space-y-2">
+                <label
+                  htmlFor="websiteUrl"
+                  className="block text-sm font-medium text-gray-900 dark:text-gray-100"
+                >
+                  官网地址
+                </label>
+                <input
+                  type="url"
+                  id="websiteUrl"
+                  name="websiteUrl"
+                  value={formData.websiteUrl}
+                  onChange={handleChange}
+                  placeholder="https://example.com（可选）"
+                  autoComplete="off"
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:border-blue-500 dark:focus:border-blue-400 transition-colors"
+                />
+              </div>
+            )}
 
-            {!isCodex && showApiKey && (
+            {!isCodex && !isDroid && showApiKey && (
               <div className="space-y-1">
                 <ApiKeyInput
                   value={apiKey}
@@ -1220,7 +1257,7 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
             )}
 
             {/* 请求地址输入框 - 在需要时显示 */}
-            {!isCodex && showBaseUrlInput && (
+            {!isCodex && !isDroid && showBaseUrlInput && (
               <div className="space-y-2">
                 <label
                   htmlFor="baseUrl"
@@ -1260,7 +1297,7 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
               </div>
             )}
 
-            {!isCodex && shouldShowKimiSelector && (
+            {!isCodex && !isDroid && shouldShowKimiSelector && (
               <KimiModelSelector
                 apiKey={apiKey}
                 anthropicModel={kimiAnthropicModel}
@@ -1304,8 +1341,26 @@ const ProviderForm: React.FC<ProviderFormProps> = ({
               </div>
             )}
 
-            {/* Claude 或 Codex 的配置部分 */}
-            {isCodex ? (
+            {/* Claude、Codex 或 Droid 的配置部分 */}
+            {isDroid ? (
+              <DroidConfigEditor
+                config={(() => {
+                  try {
+                    const parsed = JSON.parse(formData.settingsConfig || "{}");
+                    return parsed || {};
+                  } catch {
+                    return {};
+                  }
+                })()}
+                onChange={(config) => {
+                  console.log("[Droid] Config changed:", config);
+                  setFormData((prev) => ({
+                    ...prev,
+                    settingsConfig: JSON.stringify(config, null, 2),
+                  }));
+                }}
+              />
+            ) : isCodex ? (
               <CodexConfigEditor
                 authValue={codexAuth}
                 configValue={codexConfig}

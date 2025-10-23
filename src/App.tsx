@@ -5,11 +5,12 @@ import { AppType } from "./lib/tauri-api";
 import ProviderList from "./components/ProviderList";
 import AddProviderModal from "./components/AddProviderModal";
 import EditProviderModal from "./components/EditProviderModal";
+import { BatchAddKeysModal } from "./components/BatchAddKeysModal";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { AppSwitcher } from "./components/AppSwitcher";
 import SettingsModal from "./components/SettingsModal";
 import { UpdateBadge } from "./components/UpdateBadge";
-import { Plus, Settings, Moon, Sun } from "lucide-react";
+import { Plus, Settings, Moon, Sun, Upload } from "lucide-react";
 import McpPanel from "./components/mcp/McpPanel";
 import { buttonStyles } from "./lib/styles";
 import { useDarkMode } from "./hooks/useDarkMode";
@@ -26,6 +27,7 @@ function App() {
   const [providers, setProviders] = useState<Record<string, Provider>>({});
   const [currentProviderId, setCurrentProviderId] = useState<string>("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isBatchAddModalOpen, setIsBatchAddModalOpen] = useState(false);
   const [editingProviderId, setEditingProviderId] = useState<string | null>(
     null,
   );
@@ -125,8 +127,11 @@ function App() {
   }, [activeApp, isAutoSyncEnabled]);
 
   const loadProviders = async () => {
+    console.log(`[App] 加载供应商列表，应用类型: ${activeApp}`);
     const loadedProviders = await window.api.getProviders(activeApp);
+    console.log(`[App] 加载到 ${Object.keys(loadedProviders).length} 个供应商:`, loadedProviders);
     const currentId = await window.api.getCurrentProvider(activeApp);
+    console.log(`[App] 当前供应商 ID: ${currentId}`);
     setProviders(loadedProviders);
     setCurrentProviderId(currentId);
 
@@ -142,16 +147,74 @@ function App() {
   };
 
   const handleAddProvider = async (provider: Omit<Provider, "id">) => {
-    const newProvider: Provider = {
-      ...provider,
-      id: generateId(),
-      createdAt: Date.now(), // 添加创建时间戳
-    };
-    await window.api.addProvider(newProvider, activeApp);
-    await loadProviders();
-    setIsAddModalOpen(false);
-    // 更新托盘菜单
-    await window.api.updateTrayMenu();
+    try {
+      const newProvider: Provider = {
+        ...provider,
+        id: generateId(),
+        createdAt: Date.now(), // 添加创建时间戳
+      };
+      await window.api.addProvider(newProvider, activeApp);
+      await loadProviders();
+      setIsAddModalOpen(false);
+      // 更新托盘菜单
+      await window.api.updateTrayMenu();
+      // 显示成功提示
+      showNotification(t("notifications.providerAdded"), "success", 2000);
+    } catch (error) {
+      console.error(t("console.addProviderFailed"), error);
+      const errorMessage = extractErrorMessage(error);
+      const message = errorMessage
+        ? t("notifications.addFailed", { error: errorMessage })
+        : t("notifications.addFailedGeneric");
+      showNotification(message, "error", errorMessage ? 6000 : 3000);
+    }
+  };
+
+  const handleBatchAddProviders = async (providers: Omit<Provider, "id">[]) => {
+    try {
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const provider of providers) {
+        try {
+          const newProvider: Provider = {
+            ...provider,
+            id: generateId(),
+            createdAt: Date.now(),
+          };
+          await window.api.addProvider(newProvider, activeApp);
+          successCount++;
+        } catch (error) {
+          console.error("添加供应商失败:", error);
+          failCount++;
+        }
+      }
+
+      await loadProviders();
+      setIsBatchAddModalOpen(false);
+      await window.api.updateTrayMenu();
+
+      // 显示结果提示
+      if (failCount === 0) {
+        showNotification(
+          t("notifications.batchAddSuccess", { count: successCount }),
+          "success",
+          3000
+        );
+      } else {
+        showNotification(
+          t("notifications.batchAddPartial", {
+            success: successCount,
+            fail: failCount,
+          }),
+          "error",
+          5000
+        );
+      }
+    } catch (error) {
+      console.error("批量添加失败:", error);
+      showNotification(t("notifications.batchAddFailed"), "error", 3000);
+    }
   };
 
   const handleEditProvider = async (provider: Provider) => {
@@ -382,6 +445,16 @@ function App() {
               MCP
             </button>
 
+            {activeApp === "droid" && (
+              <button
+                onClick={() => setIsBatchAddModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-emerald-500 text-white hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700"
+              >
+                <Upload size={16} />
+                {t("droid.batchImport")}
+              </button>
+            )}
+
             <button
               onClick={() => setIsAddModalOpen(true)}
               className={`inline-flex items-center gap-2 ${buttonStyles.primary}`}
@@ -429,6 +502,13 @@ function App() {
           appType={activeApp}
           onAdd={handleAddProvider}
           onClose={() => setIsAddModalOpen(false)}
+        />
+      )}
+
+      {isBatchAddModalOpen && activeApp === "droid" && (
+        <BatchAddKeysModal
+          onAdd={handleBatchAddProviders}
+          onClose={() => setIsBatchAddModalOpen(false)}
         />
       )}
 

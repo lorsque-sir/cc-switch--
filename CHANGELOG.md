@@ -5,6 +5,31 @@ All notable changes to CC Switch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.3] - 2025-10-23
+
+### ✨ Features
+- Add Droid application type for Factory API Key management
+- Implement system environment variable management (Factory_API_Key) with cross-platform support
+- Add real-time balance checking for Factory API Keys with visual progress bars
+- Implement batch import feature for adding multiple API Keys at once
+- Add balance visualization with color-coded progress bars (green/yellow/orange/red)
+- Support batch balance checking with automatic rate limiting
+
+### 🔧 Improvements
+- Optimize tray menu with collapsible submenus for Claude/Codex/Droid
+- Add one-step endpoint switching in tray menu (auto-activate provider + switch endpoint)
+- Simplify Droid provider form (only show name and API Key fields)
+- Add intelligent visibility for API Key editing (show by default when editing, hide when adding)
+- Implement automatic configuration migration for backward compatibility
+- Add comprehensive logging for balance queries and debugging
+- Change development server port from 3000 to 1420
+
+### 🐛 Fixes
+- Fix Tauri command parameter naming (use camelCase for consistency)
+- Fix provider data loading to prevent cross-app data mixing
+- Add error handling and notifications for all Droid operations
+- Improve environment variable cleanup with proper error handling
+
 ## [3.4.0] - 2025-10-01
 
 ### ✨ Features

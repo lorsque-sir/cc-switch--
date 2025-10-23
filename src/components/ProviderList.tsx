@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Provider } from "../types";
 import { Play, Edit3, Trash2, CheckCircle2, Users, Check, Zap, Loader2 } from "lucide-react";
 import { buttonStyles, cardStyles, badgeStyles, cn } from "../lib/styles";
-import { AppType, EndpointLatency } from "../lib/tauri-api";
+import { AppType, EndpointLatency, BalanceInfo } from "../lib/tauri-api";
+import { BalanceDisplay } from "./BalanceDisplay";
 import {
   applyProviderToVSCode,
   detectApplied,
@@ -236,6 +237,12 @@ const ProviderList: React.FC<ProviderListProps> = ({
   const [testingProviderId, setTestingProviderId] = useState<string | null>(null);
   const [speedTestResults, setSpeedTestResults] = useState<Record<string, EndpointLatency>>({});
 
+  // Droid 余额相关状态
+  const [balances, setBalances] = useState<Record<string, BalanceInfo>>({});
+  const [balanceLastChecked, setBalanceLastChecked] = useState<Record<string, number>>({});
+  const [checkingBalance, setCheckingBalance] = useState<string | null>(null);
+  const [balanceErrors, setBalanceErrors] = useState<Record<string, string>>({});
+
   // 处理测速
   const handleTestSpeed = async (provider: Provider) => {
     const url = getApiUrl(provider);
@@ -273,6 +280,63 @@ const ProviderList: React.FC<ProviderListProps> = ({
       );
     } finally {
       setTestingProviderId(null);
+    }
+  };
+
+  // 处理余额查询 (仅针对 Droid)
+  const handleCheckBalance = async (provider: Provider) => {
+    if (appType !== "droid") return;
+    
+    console.log("[Droid Balance] Provider:", provider);
+    console.log("[Droid Balance] settingsConfig:", provider.settingsConfig);
+    
+    const apiKey = provider.settingsConfig?.apiKey;
+    console.log("[Droid Balance] API Key:", apiKey);
+    
+    if (!apiKey) {
+      console.error("[Droid Balance] API Key 不存在");
+      setBalanceErrors((prev) => ({
+        ...prev,
+        [provider.id]: "Missing API Key",
+      }));
+      return;
+    }
+
+    setCheckingBalance(provider.id);
+    setBalanceErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[provider.id];
+      return newErrors;
+    });
+
+    try {
+      console.log("[Droid Balance] 开始查询...");
+      const balance = await window.api.checkDroidBalance(apiKey);
+      console.log("[Droid Balance] 查询成功:", balance);
+      
+      setBalances((prev) => ({
+        ...prev,
+        [provider.id]: balance,
+      }));
+      setBalanceLastChecked((prev) => ({
+        ...prev,
+        [provider.id]: Date.now(),
+      }));
+    } catch (error: any) {
+      console.error("[Droid Balance] 查询失败:", error);
+      console.error("[Droid Balance] 错误详情:", {
+        message: error?.message,
+        stack: error?.stack,
+        raw: error,
+      });
+      
+      const errorMsg = error?.message || error?.toString() || "Unknown error";
+      setBalanceErrors((prev) => ({
+        ...prev,
+        [provider.id]: errorMsg,
+      }));
+    } finally {
+      setCheckingBalance(null);
     }
   };
 
@@ -464,7 +528,7 @@ const ProviderList: React.FC<ProviderListProps> = ({
                       )}
                     </button>
 
-                    {appType === "claude" && isCurrent ? (
+                    {(appType === "claude" || appType === "droid") && isCurrent ? (
                       <button
                         onClick={onDisable}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors w-[90px] justify-center whitespace-nowrap bg-orange-500 text-white hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700"
@@ -511,6 +575,18 @@ const ProviderList: React.FC<ProviderListProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {/* Droid 余额显示 */}
+                {appType === "droid" && (
+                  <BalanceDisplay
+                    apiKey={provider.settingsConfig?.apiKey || ""}
+                    balance={balances[provider.id]}
+                    lastChecked={balanceLastChecked[provider.id]}
+                    onRefresh={() => handleCheckBalance(provider)}
+                    isLoading={checkingBalance === provider.id}
+                    error={balanceErrors[provider.id]}
+                  />
+                )}
               </div>
             );
           })}
